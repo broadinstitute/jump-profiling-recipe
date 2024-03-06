@@ -149,14 +149,13 @@ def annotate_dataframe(
 ):
     """Annotate gene and chromosome name and sort genes based on
     chromosome location"""
-    df = pd.read_csv(df_path)
+    df = pd.read_parquet(df_path)
     df_gene = pd.read_csv(df_gene_path)
-    df_chrom = pd.read_csv(df_chrom_path)
+    df_chrom = pd.read_csv(df_chrom_path, sep="\t", dtype=str)
 
     df = remove_nan_features(df)
     df = annotate_gene(df, df_gene)
     df = annotate_chromosome(df, df_chrom)
-    df = sort_on_chromosome(df)
     df.to_parquet(output_path)
 
 

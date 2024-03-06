@@ -63,6 +63,26 @@ rule INT:
     run:
         pp.transform.rank_int(*input, *output)
 
+rule well_correct:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_wellpos.parquet",
+    run:
+        correct.well_position.subtract_well_mean_parallel(*input, *output)
+
+
+rule annotate_genes:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_annotated.parquet",
+    params:
+        df_gene_path="inputs/crispr.csv.gz",
+        df_chrom_path="inputs/gene_chromosome_map.tsv",
+    run:
+        correct.well_position.annotate_dataframe(*input, *output, params.df_gene_path, params.df_chrom_path)
+
 
 rule featselect:
     input:
