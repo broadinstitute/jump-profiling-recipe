@@ -7,7 +7,7 @@ import preprocessing as pp
 
 rule all:
     input:
-        "outputs/jump_dataset/mad_int_featselect_harmony.parquet",
+        "outputs/jump_dataset/mad_int_wellpos_annotated_PCA_corrected.parquet",
 
 
 rule write_parquet:
@@ -72,6 +72,8 @@ rule well_correct:
         correct.well_position.subtract_well_mean_parallel(*input, *output)
 
 
+
+
 rule annotate_genes:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
@@ -82,6 +84,26 @@ rule annotate_genes:
         df_chrom_path="inputs/gene_chromosome_map.tsv",
     run:
         correct.well_position.annotate_dataframe(*input, *output, params.df_gene_path, params.df_chrom_path)
+
+
+rule transform_data:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_PCA.parquet",
+    run:
+        correct.well_position.transform_data(*input, *output)
+
+
+rule correct_arm:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_corrected.parquet",
+    params:
+        gene_expression_path="inputs/Recursion_U2OS_expression_data.csv.gz",
+    run:
+        correct.well_position.arm_correction(*input, *output, params.gene_expression_path)
 
 
 rule featselect:
