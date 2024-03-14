@@ -22,12 +22,6 @@
     "values_norm": [
         "DMSO"
     ],
-    "epsilon_mad": 0.006703,
-    "mad_norm": true,
-    "outlier_removal": true,
-    "nan_removal": true,
-    "feature_selection": true,
-    "sphering": true,
-    "sphering_mode": "corr",
-    "sphering_lambda": 3.818055
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 25
 }

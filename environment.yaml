@@ -10,3 +10,6 @@ dependencies:
   - snakemake-minimal=7.32.4
   - harmonypy=0.0.9
   - tqdm=4.66.2
+  - pip=23.3.1
+  - pip:
+      - git+https://github.com/cytomining/copairs.git@v0.4.1
