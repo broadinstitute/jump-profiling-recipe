@@ -3,6 +3,7 @@ configfile: "./inputs/compound.json"
 
 wildcard_constraints:
     pipeline=r"[_a-zA-Z.~0-9\-]*",
+    scenario=r"[_a-zA-Z.~0-9\-]*",
 
 
 import correct
@@ -15,52 +16,43 @@ include: "rules/map.smk"
 
 rule all:
     input:
-        "outputs/jump_dataset/mad_int_wellpos_annotated_PCA_corrected.parquet",
+        "outputs/jump_dataset/profiles_wellpos_mad_int_featselect_sphering_harmony_PCA.parquet",
 
 
 rule write_parquet:
     output:
-        "outputs/{scenario}/raw.parquet",
+        "outputs/{scenario}/profiles.parquet",
     run:
         pp.io.write_parquet(config["sources"], config["plate_types"], *output)
 
 
 rule compute_negcon_stats:
     input:
-        "outputs/{scenario}/raw.parquet",
+        "outputs/{scenario}/{pipeline}.parquet",
     output:
-        "outputs/{scenario}/neg_stats.parquet",
+        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
     run:
         pp.stats.compute_negcon_stats(*input, *output)
 
 
 rule select_variant_feats:
     input:
-        "outputs/{scenario}/raw.parquet",
-        "outputs/{scenario}/neg_stats.parquet",
+        "outputs/{scenario}/{pipeline}.parquet",
+        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
     output:
-        "outputs/{scenario}/variant_feats.parquet",
+        "outputs/{scenario}/{pipeline}_varfilter.parquet",
     run:
         pp.stats.select_variant_features(*input, *output)
 
 
 rule mad_normalize:
     input:
-        "outputs/{scenario}/variant_feats.parquet",
-        "outputs/{scenario}/neg_stats.parquet",
+        "outputs/{scenario}/{pipeline}.parquet",
+        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
     output:
-        "outputs/{scenario}/mad.parquet",
+        "outputs/{scenario}/{pipeline}_mad.parquet",
     run:
         pp.normalize.mad(*input, *output)
-
-
-rule compute_norm_stats:
-    input:
-        "outputs/{scenario}/mad.parquet",
-    output:
-        "outputs/{scenario}/norm_stats.parquet",
-    run:
-        pp.stats.compute_stats(*input, *output)
 
 
 rule INT:
@@ -95,7 +87,7 @@ rule annotate_genes:
         )
 
 
-rule transform_data:
+rule pca_transform:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
