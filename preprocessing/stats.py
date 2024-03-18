@@ -87,13 +87,14 @@ def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
     return dframe[[c for c in dframe.columns if c not in redlist]]
 
 
-def compute_negcon_stats(parquet_path, neg_stats_path):
+def compute_negcon_stats(parquet_path, neg_stats_path, negcon_list = ['DMSO']):
     '''create statistics of negative controls platewise for columns without nan/inf values only'''
     logger.info('Loading data')
     dframe = pd.read_parquet(parquet_path)
     logger.info('Removing nan and inf columns')
     dframe = remove_nan_infs_columns(dframe)
-    negcon = dframe.query('Metadata_JCP2022 == "DMSO"')
+    # negcon = dframe.query('Metadata_JCP2022 == "DMSO"')
+    negcon = dframe[dframe['Metadata_JCP2022'].isin(negcon_list)]
     logger.info('computing stats for negcons')
     neg_stats = get_plate_stats(negcon)
     logger.info('stats done.')

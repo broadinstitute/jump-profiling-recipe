@@ -7,7 +7,7 @@ from preprocessing.io import split_parquet
 def _index(meta, plate_types, ignore_codes=None):
     '''Select samples to be used in mAP computation'''
     index = meta['Metadata_PlateType'].isin(plate_types)
-    index &= (meta['Metadata_PertType'] != 'poscon')
+    index &= (meta['Metadata_pert_type'] != 'poscon')
     valid_cmpd = meta.loc[index, 'Metadata_JCP2022'].value_counts()
     valid_cmpd = valid_cmpd[valid_cmpd > 1].index
     index &= meta['Metadata_JCP2022'].isin(valid_cmpd)
@@ -44,9 +44,9 @@ def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
         pos_sameby=['Metadata_JCP2022'],
         pos_diffby=['Metadata_Well'],
         neg_sameby=['Metadata_Plate'],
-        neg_diffby=['Metadata_PertType', 'Metadata_JCP2022'],
+        neg_diffby=['Metadata_pert_type', 'Metadata_JCP2022'],
         batch_size=20000)
-    result = result.query('Metadata_PertType!="negcon"')
+    result = result.query('Metadata_pert_type!="negcon"')
     result.reset_index(drop=True).to_parquet(ap_path)
 
 

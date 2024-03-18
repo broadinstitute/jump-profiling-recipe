@@ -114,6 +114,9 @@ def get_well_metadata(plate_types: list[str]):
     if "ORF" in plate_types:
         orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")
         well_metadata = well_metadata.merge(orf_metadata, how="inner")
+    if "CRISPR" in plate_types:
+        crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
+        well_metadata = well_metadata.merge(crispr_metadata, how="inner")
     # Use readable names for controls and non-treatment codes
     well_metadata["Metadata_JCP2022"] = well_metadata["Metadata_JCP2022"].apply(
         lambda x: MAPPER.get(x, x)

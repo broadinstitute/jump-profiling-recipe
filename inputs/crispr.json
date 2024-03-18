@@ -1,0 +1,17 @@
+{
+    "sources": [
+        "source_13"
+    ],
+    "plate_types": [
+        "CRISPR"
+    ],
+    "batch_key": "Metadata_Batch",
+    "label_key": "Metadata_JCP2022",
+    "column_norm": "Metadata_JCP2022",
+    "values_norm": [
+        "JCP2022_800001", 
+        "JCP2022_800002"
+    ],
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 25
+}

@@ -78,10 +78,10 @@ def load_data(sources, plate_types):
     return dframe
 
 
-def add_pert_type(meta: pd.DataFrame, col: str = 'Metadata_PertType'):
+def add_pert_type(meta: pd.DataFrame, col: str = 'Metadata_PertType', negcon_list: list = ['DMSO']):
     meta[col] = 'trt'
     meta.loc[~meta['Metadata_JCP2022'].str.startswith('JCP'), col] = 'poscon'
-    meta.loc[meta['Metadata_JCP2022'] == 'DMSO', col] = 'negcon'
+    meta.loc[meta['Metadata_JCP2022'].isin(negcon_list), col] = 'negcon'
     meta[col] = meta[col].astype('category')
 
 
@@ -96,12 +96,12 @@ def add_microscopy_info(meta: pd.DataFrame):
     configs = meta['Metadata_Source'].map(MICRO_CONFIG).astype('category')
     meta['Metadata_Microscope'] = configs
 
-def write_parquet(sources, plate_types, output_file):
+def write_parquet(sources, plate_types, output_file, negcon_list=['DMSO']):
     '''Write the parquet dataset given the params'''
     dframe = load_data(sources, plate_types)
     # Efficient merge
     meta = load_metadata(sources, plate_types)
-    add_pert_type(meta)
+    add_pert_type(meta, negcon_list=negcon_list)
     add_row_col(meta)
     add_microscopy_info(meta)
     foreign_key = ['Metadata_Source', 'Metadata_Plate', 'Metadata_Well']

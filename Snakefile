@@ -1,4 +1,5 @@
-configfile: "./inputs/compound.json"
+pert='crispr'
+configfile: f"./inputs/{pert}.json"
 
 
 wildcard_constraints:
@@ -16,14 +17,14 @@ include: "rules/map.smk"
 
 rule all:
     input:
-        "outputs/jump_dataset/profiles_wellpos_mad_int_featselect_sphering_harmony_PCA.parquet",
+        f"outputs/{pert}/profiles_wellpos_mad_int_featselect_sphering_harmony_PCA.parquet",
 
 
 rule write_parquet:
     output:
         "outputs/{scenario}/profiles.parquet",
     run:
-        pp.io.write_parquet(config["sources"], config["plate_types"], *output)
+        pp.io.write_parquet(config["sources"], config["plate_types"], *output, negcon_list=config["values_norm"])
 
 
 rule compute_negcon_stats:
@@ -32,7 +33,7 @@ rule compute_negcon_stats:
     output:
         "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
     run:
-        pp.stats.compute_negcon_stats(*input, *output)
+        pp.stats.compute_negcon_stats(*input, *output, negcon_list=config["values_norm"])
 
 
 rule select_variant_feats:

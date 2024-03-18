@@ -1,8 +1,10 @@
 """Functions to perform well position correction, chromosome arm correction, and PCA"""
 from concurrent import futures
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+import sys
+sys.path.append('..')
+from preprocessing.stats import remove_nan_infs_columns
 
+from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 
@@ -20,6 +22,8 @@ def get_feature_cols(df):
 def subtract_well_mean_parallel(input_path: str, output_path: str):
     """Subtract the mean of each feature per each well in parallel."""
     df = pd.read_parquet(input_path)
+    df = remove_nan_infs_columns(df)
+
     feature_cols = get_feature_cols(df)
 
     # rewrite main loop to parallelize it
@@ -36,9 +40,7 @@ def subtract_well_mean_parallel(input_path: str, output_path: str):
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
-    """Transform data by scaling and applying PCA. Data is scaled by plate
-    before and after PCA is applied. The experimental replicates are averaged
-    together by taking the mean.
+    """Transform data by applying PCA. 
 
     Parameters
     ----------
@@ -54,19 +56,7 @@ def transform_data(input_path: str, output_path: str, variance=0.98):
     metadata = df[get_meta_cols(df)]
     features = df[get_feature_cols(df)]
 
-    for plate in metadata.Metadata_Plate.unique():
-        scaler = StandardScaler()
-        features.loc[metadata.Metadata_Plate == plate, :] = scaler.fit_transform(
-            features.loc[metadata.Metadata_Plate == plate, :]
-        )
-
     features = pd.DataFrame(PCA(variance).fit_transform(features))
-
-    for plate in metadata.Metadata_Plate.unique():
-        scaler = StandardScaler()
-        features.loc[metadata.Metadata_Plate == plate, :] = scaler.fit_transform(
-            features.loc[metadata.Metadata_Plate == plate, :]
-        )
 
     df_new = pd.concat([metadata, features], axis=1)
     df_new.columns = df_new.columns.astype(str)
