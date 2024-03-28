@@ -4,8 +4,9 @@ import logging
 from harmonypy import run_harmony
 from preprocessing import io
 
+# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
-
+# logger.setLevel(logging.WARN)
 
 def harmony(dframe_path, batch_key, output_path):
     '''Harmony correction'''

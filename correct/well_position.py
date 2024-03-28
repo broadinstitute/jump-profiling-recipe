@@ -1,13 +1,22 @@
 """Functions to perform well position correction, chromosome arm correction, and PCA"""
 from concurrent import futures
+from pathos.multiprocessing import Pool
+# from multiprocessing import get_context
+from tqdm.contrib.concurrent import thread_map
+
 import sys
 sys.path.append('..')
 from preprocessing.stats import remove_nan_infs_columns
-
+from preprocessing.io import report_nan_infs_columns
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
+import polars as pl
+from statsmodels.formula.api import ols
+import logging
 
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.WARN)
 
 def get_meta_cols(df):
     """return a list of metadata columns"""
@@ -18,25 +27,59 @@ def get_feature_cols(df):
     """returna  list of featuredata columns"""
     return df.filter(regex="^(?!Metadata_)").columns
 
+def pd_to_polars(df):
+    """
+    Convert a Pandas DataFrame to Polars DataFrame and handle columns
+    with int and float categorical dtypes.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if isinstance(df[col].dtype, pd.CategoricalDtype):
+            if pd.api.types.is_integer_dtype(df[col].cat.categories.dtype):
+                df[col] = df[col].astype(int)
+                print(f"Column [{col}] cast to int")
+            elif pd.api.types.is_float_dtype(df[col].cat.categories.dtype):
+                df[col] = df[col].astype(float)
+                print(f"Column [{col}] cast to float")
 
-def subtract_well_mean_parallel(input_path: str, output_path: str):
-    """Subtract the mean of each feature per each well in parallel."""
+    return pl.from_pandas(df)
+
+def drop_na_feature_rows(ann_dframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drop rows with NA values in non-feature columns.
+    """
+    org_shape = ann_dframe.shape[0]
+    ann_dframe_clean = ann_dframe[~ann_dframe.filter(regex="^(?!Metadata_)").isnull().T.any()]
+    ann_dframe_clean.reset_index(drop=True, inplace=True)
+    if (org_shape - ann_dframe_clean.shape[0] < 100):
+        return ann_dframe_clean
+    return ann_dframe
+
+def subtract_well_mean(input_path: str, output_path: str):
+    """
+    Subtract the mean of each feature per each well.
+    """
+    ann_df = pd.read_parquet(input_path)
+    ann_df = drop_na_feature_rows(ann_df)
+
+    feature_cols = ann_df.filter(regex="^(?!Metadata_)").columns
+    ann_df[feature_cols] = ann_df.groupby("Metadata_Well")[feature_cols].transform(
+        lambda x: x - x.mean()
+    )
+    ann_df.to_parquet(output_path, index=False)
+
+def subtract_well_mean_polars(input_path: str, output_path: str):
+    """Subtract the mean of each feature per well using polar."""
     df = pd.read_parquet(input_path)
     df = remove_nan_infs_columns(df)
 
-    feature_cols = get_feature_cols(df)
-
-    # rewrite main loop to parallelize it
-    def subtract_well_mean_parallel_helper(feature):
-        return {feature: df[feature] - df.groupby("Metadata_Well")[feature].mean()}
-
-    with futures.ThreadPoolExecutor() as executor:
-        results = executor.map(subtract_well_mean_parallel_helper, feature_cols)
-
-    for res in results:
-        df.update(pd.DataFrame(res))
-
-    df.to_parquet(output_path, index=False)
+    lf = pd_to_polars(df).lazy()
+    feature_cols = [i for i in lf.columns if "Metadata_" not in i]
+    lf = lf.with_columns(pl.col(feature_cols) - pl.mean(feature_cols).over("Metadata_Well"))
+    df_well_corrected = lf.collect()
+    df_well_corrected = df_well_corrected.to_pandas()
+    report_nan_infs_columns(df_well_corrected)
+    df_well_corrected.to_parquet(output_path, index=False)
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
@@ -114,10 +157,11 @@ def annotate_chromosome(df, df_meta):
 
     if "Metadata_arm" not in df.columns:
         df["Metadata_arm"] = df["Metadata_Locus"].apply(lambda x: split_arm(str(x)))
-
-    df["Metadata_Chromosome"] = df["Metadata_Chromosome"].apply(
-        lambda x: "12" if x == "12 alternate reference locus" else x
-    )
+    
+    if "Metadata_Chromosome" not in df.columns:
+        df["Metadata_Chromosome"] = df["Metadata_Chromosome"].apply(
+            lambda x: "12" if x == "12 alternate reference locus" else x
+        )
 
     return df
 
@@ -150,7 +194,7 @@ def annotate_dataframe(
 
 
 def arm_correction(
-    gene_expression_file: str, crispr_profile_path: str, output_path: str
+    crispr_profile_path: str, output_path: str, gene_expression_file: str
 ):
     """Perform chromosome arm correction"""
     df_exp = pd.read_csv(gene_expression_file)
@@ -197,3 +241,64 @@ def arm_correction(
     df_crispr = pd.concat([df_no_arm, df_crispr[col]], axis=0, ignore_index=True)
 
     df_crispr.to_parquet(output_path, index=False)
+
+def merge_cell_counts(df: pd.DataFrame, cc_path):
+    df_cc = pd.read_csv(cc_path).rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"})
+    df = df.merge(df_cc[['Metadata_Well', 'Metadata_Plate', 'Cells_Count_Count']],
+                  on=['Metadata_Well', 'Metadata_Plate'], 
+                  how='left').reset_index(drop=True)
+    return df
+
+def regress_out_cell_counts_parallel(
+    input_path: str,
+    output_path: str,
+    cc_path: str,
+    cc_col: str = 'Cells_Count_Count',
+    min_unique: int = 100,
+    inplace: bool = True,
+) -> pd.DataFrame:
+    """
+    Regress out cell counts from all features in a dataframe in parallel.
+
+    Parameters
+    ----------
+    ann_df : pandas.core.frame.DataFrame
+        DataFrame of annotated profiles.
+    cc_col : str
+        Name of column containing cell counts.
+    min_unique : int, optional
+        Minimum number of unique feature values to perform regression.
+    cc_rename : str, optional
+        Name to rename cell count column to.
+    inplace : bool, optional
+        Whether to perform operation in place.
+
+    Returns
+    -------
+    df : pandas.core.frame.DataFrame
+    """
+    ann_df = pd.read_parquet(input_path)
+    df = ann_df if inplace else ann_df.copy()
+    df = merge_cell_counts(df, cc_path)
+
+    feature_cols = df.filter(regex="^(?!Metadata_)").columns.to_list()
+    feature_cols.remove(cc_col)
+    feature_cols = [
+        feature for feature in feature_cols if df[feature].nunique() > min_unique
+    ]
+    print(f'Number of features to regress: {len(feature_cols)}')
+          
+    def regress_out_cell_counts_parallel_helper(feature):
+        model = ols(f"{feature} ~ {cc_col}", data=df).fit()
+        return {feature: model.resid}
+
+    results = thread_map(regress_out_cell_counts_parallel_helper, feature_cols)
+
+    print('Updating dataframe')
+
+    for res in results:
+        df.update(pd.DataFrame(res))
+
+    # Check for NaN/INF columns and drop
+    df = remove_nan_features(df)
+    df.to_parquet(output_path, index=False)

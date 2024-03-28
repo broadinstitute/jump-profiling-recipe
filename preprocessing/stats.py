@@ -10,7 +10,9 @@ from preprocessing.io import merge_parquet
 
 from .metadata import find_feat_cols, find_meta_cols
 
+# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
+# logger.setLevel(logging.WARN)
 
 
 def get_feat_stats(dframe: pd.DataFrame, features=None):
@@ -84,40 +86,51 @@ def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
     withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
     withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
     redlist = set(chain(withinf.index, withnan.index, withninf.index))
+    logger.warning(f'Dropping {len(redlist)} NaN/INF features.')
     return dframe[[c for c in dframe.columns if c not in redlist]]
 
 
-def compute_negcon_stats(parquet_path, neg_stats_path, negcon_list = ['DMSO']):
-    '''create statistics of negative controls platewise for columns without nan/inf values only'''
+def compute_norm_stats(
+        parquet_path, 
+        df_stats_path, 
+        negcon_list = ['DMSO'], 
+        use_negcon = False):
+    '''create platewise statistics for columns without nan/inf values only'''
     logger.info('Loading data')
     dframe = pd.read_parquet(parquet_path)
     logger.info('Removing nan and inf columns')
     dframe = remove_nan_infs_columns(dframe)
-    # negcon = dframe.query('Metadata_JCP2022 == "DMSO"')
-    negcon = dframe[dframe['Metadata_JCP2022'].isin(negcon_list)]
-    logger.info('computing stats for negcons')
-    neg_stats = get_plate_stats(negcon)
+    if use_negcon:
+        dframe_norm = dframe[dframe['Metadata_JCP2022'].isin(negcon_list)]
+        logger.info('computing plate stats for negcons')
+    else:
+        dframe_norm = dframe
+        logger.info('computing plate stats for all treatments')
+    dframe_stats = get_plate_stats(dframe_norm)
     logger.info('stats done.')
-    add_metadata(neg_stats, dframe[find_meta_cols(dframe)])
-    neg_stats.to_parquet(neg_stats_path)
+    add_metadata(dframe_stats, dframe[find_meta_cols(dframe)])
+    dframe_stats.to_parquet(df_stats_path)
 
 
-def select_variant_features(parquet_path, neg_stats_path, variant_feats_path):
+def select_variant_features(parquet_path, norm_stats_path, variant_feats_path):
     '''
     Filtered out features that have mad == 0 or abs_coef_var>1e-3 in any plate.
     stats are computed using negative controls only
     '''
     dframe = pd.read_parquet(parquet_path)
-    neg_stats = pd.read_parquet(neg_stats_path)
+    norm_stats = pd.read_parquet(norm_stats_path)
+
+    # Remove NaN and Inf
+    dframe = remove_nan_infs_columns(dframe)
 
     # Select variant_features
-    neg_stats = neg_stats.query('mad!=0 and abs_coef_var>1e-3')
-    groups = neg_stats.groupby('Metadata_Plate', observed=True)['feature']
+    norm_stats = norm_stats.query('mad!=0 and abs_coef_var>1e-3')
+    groups = norm_stats.groupby('Metadata_Plate', observed=True)['feature']
     variant_features = set.intersection(*groups.agg(set).tolist())
 
     # Select plates with variant features
-    neg_stats = neg_stats.query('feature in @variant_features')
-    dframe = dframe.query('Metadata_Plate in @neg_stats.Metadata_Plate')
+    norm_stats = norm_stats.query('feature in @variant_features')
+    dframe = dframe.query('Metadata_Plate in @norm_stats.Metadata_Plate')
 
     # Filter features
     variant_features = sorted(variant_features)

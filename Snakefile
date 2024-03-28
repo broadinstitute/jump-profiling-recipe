@@ -1,4 +1,4 @@
-pert='crispr'
+pert='orf'
 configfile: f"./inputs/{pert}.json"
 
 
@@ -17,7 +17,7 @@ include: "rules/map.smk"
 
 rule all:
     input:
-        f"outputs/{pert}/profiles_wellpos_mad_int_featselect_sphering_harmony_PCA.parquet",
+        f"outputs/crispr_v11/profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet",
 
 
 rule write_parquet:
@@ -27,21 +27,24 @@ rule write_parquet:
         pp.io.write_parquet(config["sources"], config["plate_types"], *output, negcon_list=config["values_norm"])
 
 
-rule compute_negcon_stats:
+rule compute_norm_stats:
     input:
-        "outputs/{scenario}/{pipeline}.parquet",
+        "outputs/{scenario}/profiles_wellpos_cc.parquet",
     output:
-        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
+        "outputs/{scenario}/norm_stats.parquet",
+    params:
+        use_negcon = config['use_mad_negcon'],
+        negcon_list = config['values_norm'],
     run:
-        pp.stats.compute_negcon_stats(*input, *output, negcon_list=config["values_norm"])
+        pp.stats.compute_norm_stats(*input, *output, use_negcon=params.use_negcon, negcon_list=params.negcon_list)
 
 
 rule select_variant_feats:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
-        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
+        "outputs/{scenario}/norm_stats.parquet",
     output:
-        "outputs/{scenario}/{pipeline}_varfilter.parquet",
+        "outputs/{scenario}/{pipeline}_var.parquet",
     run:
         pp.stats.select_variant_features(*input, *output)
 
@@ -49,7 +52,7 @@ rule select_variant_feats:
 rule mad_normalize:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
-        "outputs/{scenario}/negcon_stats/{pipeline}.parquet",
+        "outputs/{scenario}/norm_stats.parquet",
     output:
         "outputs/{scenario}/{pipeline}_mad.parquet",
     run:
@@ -64,15 +67,31 @@ rule INT:
     run:
         pp.transform.rank_int(*input, *output)
 
-
 rule well_correct:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_wellpos.parquet",
     run:
-        correct.well_position.subtract_well_mean_parallel(*input, *output)
+        correct.well_position.subtract_well_mean(*input, *output)
 
+rule cc_regress:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_cc.parquet",
+    params:
+        cc_path=config['cc_path']
+    run:
+        correct.well_position.regress_out_cell_counts_parallel(*input, *output, params.cc_path)
+
+rule outlier_removal:
+    input: 
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_outlier.parquet",
+    run:
+        pp.clean.outlier_removal(*input, *output)
 
 rule annotate_genes:
     input:
@@ -99,7 +118,7 @@ rule pca_transform:
 
 rule correct_arm:
     input:
-        "outputs/{scenario}/{pipeline}.parquet",
+        "outputs/{scenario}/{pipeline}_annotated.parquet",
     output:
         "outputs/{scenario}/{pipeline}_corrected.parquet",
     params:

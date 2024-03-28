@@ -6,7 +6,10 @@ from collections.abc import Iterable
 
 import pandas as pd
 
+# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
+# logger.setLevel(logging.WARN)
+
 
 MAPPER = {
     "JCP2022_085227": "Aloxistatin",
@@ -114,6 +117,7 @@ def get_well_metadata(plate_types: list[str]):
     if "ORF" in plate_types:
         orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")
         well_metadata = well_metadata.merge(orf_metadata, how="inner")
+        # well_metadata = well_metadata[well_metadata['Metadata_pert_type']!='poscon']
     if "CRISPR" in plate_types:
         crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
         well_metadata = well_metadata.merge(crispr_metadata, how="inner")

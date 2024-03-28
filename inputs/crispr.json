@@ -13,5 +13,7 @@
         "JCP2022_800002"
     ],
     "sphering_method": "ZCA-cor",
-    "sphering_n_opts": 25
+    "sphering_n_opts": 25,
+    "cc_path": "inputs/crispr_cell_counts.csv.gz",
+    "use_mad_negcon": false
 }
