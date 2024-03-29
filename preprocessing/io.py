@@ -14,7 +14,7 @@ from .metadata import (
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 
 
 def split_parquet(
@@ -148,8 +148,8 @@ def report_nan_infs_columns(dframe: pd.DataFrame):
     withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
     withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
     if withnan.shape[0] > 0:
-        logger.warning(f"Columns with NaN: {withnan}")
+        logger.info(f"Columns with NaN: {withnan}")
     if withinf.shape[0] > 0:
-        logger.warning(f"Columns with INF: {withinf}")
+        logger.info(f"Columns with INF: {withinf}")
     if withninf.shape[0] > 0:
-        logger.warning(f"Columns with NINF: {withninf}")
+        logger.info(f"Columns with NINF: {withninf}")
