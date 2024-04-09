@@ -73,7 +73,7 @@ rule well_correct:
     output:
         "outputs/{scenario}/{pipeline}_wellpos.parquet",
     run:
-        correct.well_position.subtract_well_mean(*input, *output)
+        correct.corrections.subtract_well_mean(*input, *output)
 
 rule cc_regress:
     input:
@@ -83,7 +83,7 @@ rule cc_regress:
     params:
         cc_path=config['cc_path']
     run:
-        correct.well_position.regress_out_cell_counts_parallel(*input, *output, params.cc_path)
+        correct.corrections.regress_out_cell_counts_parallel(*input, *output, params.cc_path)
 
 rule outlier_removal:
     input: 
@@ -102,7 +102,7 @@ rule annotate_genes:
         df_gene_path="inputs/crispr.csv.gz",
         df_chrom_path="inputs/gene_chromosome_map.tsv",
     run:
-        correct.well_position.annotate_dataframe(
+        correct.corrections.annotate_dataframe(
             *input, *output, params.df_gene_path, params.df_chrom_path
         )
 
@@ -113,7 +113,7 @@ rule pca_transform:
     output:
         "outputs/{scenario}/{pipeline}_PCA.parquet",
     run:
-        correct.well_position.transform_data(*input, *output)
+        correct.corrections.transform_data(*input, *output)
 
 
 rule correct_arm:
@@ -124,7 +124,7 @@ rule correct_arm:
     params:
         gene_expression_path="inputs/Recursion_U2OS_expression_data.csv.gz",
     run:
-        correct.well_position.arm_correction(
+        correct.corrections.arm_correction(
             *input, *output, params.gene_expression_path
         )
 
@@ -147,3 +147,11 @@ rule harmony:
         batch_key=config["batch_key"],
     run:
         correct.harmony(*input, *params, *output)
+
+rule check_format:
+    output:
+        "outputs/{scenario}/format_check.txt",
+    run:
+        profile_dir = f"outputs/{wildcards.scenario}/",
+        correct.format_check.run_format_check(profile_dir[0], *output)
+        print(*input)
