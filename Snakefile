@@ -20,11 +20,11 @@ rule reformat:
     input:
         f"outputs/{config['scenario']}/{config['pipeline']}.parquet",
     output:
-        "outputs/{scenario}/format_flag.txt",
+        touch("outputs/{scenario}/reformat.done"),
+    params:
+        profile_dir=lambda w: f"outputs/{w.scenario}/",
     run:
-        profile_dir = (f"outputs/{wildcards.scenario}/",)
-        correct.format_check.run_format_check(profile_dir[0], *output)
-        print(*input)
+        correct.format_check.run_format_check(params.profile_dir)
 
 
 rule write_parquet:

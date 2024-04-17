@@ -40,7 +40,7 @@ def standardize_col_names(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def run_format_check(profile_dir: str, output_path: str):
+def run_format_check(profile_dir: str):
     """
     Ensure profiles have expected data types and column names
     """
@@ -60,6 +60,3 @@ def run_format_check(profile_dir: str, output_path: str):
         if ("harmony" in file) or ("PCA" in file):
             df = standardize_col_names(df)
         df.to_parquet(file_output_path)
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"Profiles format checked. New profiles saved at {output_dir}")
