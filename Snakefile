@@ -13,7 +13,7 @@ include: "rules/map.smk"
 
 rule all:
     input:
-        f"outputs/{config['scenario']}/format_flag.txt",
+        f"outputs/{config['scenario']}/reformat.done",
 
 
 rule reformat:

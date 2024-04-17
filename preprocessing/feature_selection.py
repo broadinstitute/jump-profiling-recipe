@@ -23,7 +23,8 @@ def select_features(dframe_path, feat_selected_path, keep_image_features):
     dframe.drop(columns=low_variance + high_corr, inplace=True)
 
     cols = find_feat_cols(dframe.columns)
-    blocklist = pd.read_csv("blocklist_features.txt").tolist()
+    with open("blocklist_features.txt", "r") as fpointer:
+        blocklist = fpointer.read().splitlines()[1:]
     blocklist = [c for c in cols if c in blocklist]
     dframe.drop(columns=blocklist, inplace=True)
     logger.info(f"{len(blocklist)} features removed by blocklist")
