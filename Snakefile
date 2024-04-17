@@ -13,7 +13,18 @@ include: "rules/map.smk"
 
 rule all:
     input:
+        f"outputs/{config['scenario']}/format_flag.txt",
+
+
+rule reformat:
+    input:
         f"outputs/{config['scenario']}/{config['pipeline']}.parquet",
+    output:
+        "outputs/{scenario}/format_flag.txt",
+    run:
+        profile_dir = (f"outputs/{wildcards.scenario}/",)
+        correct.format_check.run_format_check(profile_dir[0], *output)
+        print(*input)
 
 
 rule write_parquet:
@@ -159,12 +170,3 @@ rule harmony:
         batch_key=config["batch_key"],
     run:
         correct.harmony(*input, *params, *output)
-
-
-rule check_format:
-    output:
-        "outputs/{scenario}/format_check.txt",
-    run:
-        profile_dir = (f"outputs/{wildcards.scenario}/",)
-        correct.format_check.run_format_check(profile_dir[0], *output)
-        print(*input)
