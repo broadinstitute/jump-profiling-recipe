@@ -1,6 +1,5 @@
 """Functions to perform well position correction, chromosome arm correction, and PCA"""
 from concurrent import futures
-from pathos.multiprocessing import Pool
 # from multiprocessing import get_context
 from tqdm.contrib.concurrent import thread_map
 
@@ -11,7 +10,6 @@ from preprocessing.io import report_nan_infs_columns
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
-import polars as pl
 from statsmodels.formula.api import ols
 import logging
 
@@ -27,22 +25,6 @@ def get_feature_cols(df):
     """returna  list of featuredata columns"""
     return df.filter(regex="^(?!Metadata_)").columns
 
-def pd_to_polars(df):
-    """
-    Convert a Pandas DataFrame to Polars DataFrame and handle columns
-    with int and float categorical dtypes.
-    """
-    df = df.copy()
-    for col in df.columns:
-        if isinstance(df[col].dtype, pd.CategoricalDtype):
-            if pd.api.types.is_integer_dtype(df[col].cat.categories.dtype):
-                df[col] = df[col].astype(int)
-                print(f"Column [{col}] cast to int")
-            elif pd.api.types.is_float_dtype(df[col].cat.categories.dtype):
-                df[col] = df[col].astype(float)
-                print(f"Column [{col}] cast to float")
-
-    return pl.from_pandas(df)
 
 def drop_na_feature_rows(ann_dframe: pd.DataFrame) -> pd.DataFrame:
     """
@@ -67,19 +49,6 @@ def subtract_well_mean(input_path: str, output_path: str):
         lambda x: x - x.mean()
     )
     ann_df.to_parquet(output_path, index=False)
-
-def subtract_well_mean_polars(input_path: str, output_path: str):
-    """Subtract the mean of each feature per well using polar."""
-    df = pd.read_parquet(input_path)
-    df = remove_nan_infs_columns(df)
-
-    lf = pd_to_polars(df).lazy()
-    feature_cols = [i for i in lf.columns if "Metadata_" not in i]
-    lf = lf.with_columns(pl.col(feature_cols) - pl.mean(feature_cols).over("Metadata_Well"))
-    df_well_corrected = lf.collect()
-    df_well_corrected = df_well_corrected.to_pandas()
-    report_nan_infs_columns(df_well_corrected)
-    df_well_corrected.to_parquet(output_path, index=False)
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
