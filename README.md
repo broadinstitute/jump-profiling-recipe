@@ -16,9 +16,9 @@ mamba activate jump_recipe
 
 ## Get data
 
-Download profiles and metadata:
+Download profiles and metadata for `compound` (`crispr` or `orf`):
 ```bash
-source download_data.sh
+source download_data.sh compound
 ```
 
 ## Run workflow

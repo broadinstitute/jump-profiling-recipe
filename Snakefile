@@ -1,7 +1,3 @@
-pert='orf'
-configfile: f"./inputs/{pert}.json"
-
-
 wildcard_constraints:
     pipeline=r"[_a-zA-Z.~0-9\-]*",
     scenario=r"[_a-zA-Z.~0-9\-]*",
@@ -17,32 +13,53 @@ include: "rules/map.smk"
 
 rule all:
     input:
-        f"outputs/crispr_v11/profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet",
+        f"outputs/{config['scenario']}/reformat.done",
+
+
+rule reformat:
+    input:
+        f"outputs/{config['scenario']}/{config['pipeline']}.parquet",
+    output:
+        touch("outputs/{scenario}/reformat.done"),
+    params:
+        profile_dir=lambda w: f"outputs/{w.scenario}/",
+    run:
+        correct.format_check.run_format_check(params.profile_dir)
 
 
 rule write_parquet:
     output:
         "outputs/{scenario}/profiles.parquet",
     run:
-        pp.io.write_parquet(config["sources"], config["plate_types"], *output, negcon_list=config["values_norm"])
+        pp.io.write_parquet(
+            config["sources"],
+            config["plate_types"],
+            *output,
+            negcon_list=config["values_norm"],
+        )
 
 
 rule compute_norm_stats:
     input:
-        "outputs/{scenario}/profiles_wellpos_cc.parquet",
+        "outputs/{scenario}/{pipeline}.parquet",
     output:
-        "outputs/{scenario}/norm_stats.parquet",
+        "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     params:
-        use_negcon = config['use_mad_negcon'],
-        negcon_list = config['values_norm'],
+        use_negcon=config["use_mad_negcon"],
+        negcon_list=config["values_norm"],
     run:
-        pp.stats.compute_norm_stats(*input, *output, use_negcon=params.use_negcon, negcon_list=params.negcon_list)
+        pp.stats.compute_norm_stats(
+            *input,
+            *output,
+            use_negcon=params.use_negcon,
+            negcon_list=params.negcon_list,
+        )
 
 
 rule select_variant_feats:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
-        "outputs/{scenario}/norm_stats.parquet",
+        "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_var.parquet",
     run:
@@ -52,7 +69,7 @@ rule select_variant_feats:
 rule mad_normalize:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
-        "outputs/{scenario}/norm_stats.parquet",
+        "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_mad.parquet",
     run:
@@ -67,6 +84,7 @@ rule INT:
     run:
         pp.transform.rank_int(*input, *output)
 
+
 rule well_correct:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
@@ -75,23 +93,28 @@ rule well_correct:
     run:
         correct.corrections.subtract_well_mean(*input, *output)
 
+
 rule cc_regress:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_cc.parquet",
     params:
-        cc_path=config['cc_path']
+        cc_path=config.get("cc_path"),
     run:
-        correct.corrections.regress_out_cell_counts_parallel(*input, *output, params.cc_path)
+        correct.corrections.regress_out_cell_counts_parallel(
+            *input, *output, params.cc_path
+        )
+
 
 rule outlier_removal:
-    input: 
+    input:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_outlier.parquet",
     run:
         pp.clean.outlier_removal(*input, *output)
+
 
 rule annotate_genes:
     input:
@@ -124,9 +147,7 @@ rule correct_arm:
     params:
         gene_expression_path="inputs/Recursion_U2OS_expression_data.csv.gz",
     run:
-        correct.corrections.arm_correction(
-            *input, *output, params.gene_expression_path
-        )
+        correct.corrections.arm_correction(*input, *output, params.gene_expression_path)
 
 
 rule featselect:
@@ -134,8 +155,10 @@ rule featselect:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_featselect.parquet",
+    params:
+        keep_image_features=config["keep_image_features"],
     run:
-        pp.select_features(*input, *output)
+        pp.select_features(*input, *output, *params)
 
 
 rule harmony:
@@ -147,11 +170,3 @@ rule harmony:
         batch_key=config["batch_key"],
     run:
         correct.harmony(*input, *params, *output)
-
-rule check_format:
-    output:
-        "outputs/{scenario}/format_check.txt",
-    run:
-        profile_dir = f"outputs/{wildcards.scenario}/",
-        correct.format_check.run_format_check(profile_dir[0], *output)
-        print(*input)
