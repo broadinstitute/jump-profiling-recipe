@@ -10,6 +10,7 @@ from .metadata import (
     MICRO_CONFIG,
     find_feat_cols,
     find_meta_cols,
+    DMSO,
 )
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.DEBUG)
@@ -93,7 +94,7 @@ def load_data(sources, plate_types):
 
 
 def add_pert_type(
-    meta: pd.DataFrame, col: str = "Metadata_pert_type", negcon_list: list = ["DMSO"]
+    meta: pd.DataFrame, col: str = "Metadata_pert_type", negcon_list: list = [DMSO]
 ):
     if not col in meta.columns:
         meta[col] = "trt"
@@ -115,7 +116,7 @@ def add_microscopy_info(meta: pd.DataFrame):
     meta["Metadata_Microscope"] = configs
 
 
-def write_parquet(sources, plate_types, output_file, negcon_list=["DMSO"]):
+def write_parquet(sources, plate_types, output_file, negcon_list=[DMSO]):
     """Write the parquet dataset given the params"""
     dframe = load_data(sources, plate_types)
     # Efficient merge

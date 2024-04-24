@@ -13,7 +13,7 @@
     "label_key": "Metadata_JCP2022",
     "column_norm": "Metadata_JCP2022",
     "values_norm": [
-        "DMSO"
+        "JCP2022_033924"
     ],
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25
