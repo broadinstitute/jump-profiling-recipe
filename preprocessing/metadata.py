@@ -10,21 +10,10 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
 
-
-MAPPER = {
-    "JCP2022_085227": "Aloxistatin",
-    "JCP2022_037716": "AMG900",
-    "JCP2022_025848": "Dexamethasone",
-    "JCP2022_046054": "FK-866",
-    "JCP2022_035095": "LY2109761",
-    "JCP2022_064022": "NVS-PAK1-1",
-    "JCP2022_050797": "Quinidine",
-    "JCP2022_012818": "TC-S-7004",
-    "JCP2022_033924": "DMSO",
-    "JCP2022_999999": "UNTREATED",
-    "JCP2022_UNKNOWN": "UNKNOWN",
-    "JCP2022_900001": "BAD CONSTRUCT",
-}
+DMSO = "JCP2022_033924"
+UNTREATED = "JCP2022_999999"
+UNKNOWN = "JCP2022_UNKNOWN"
+BAD_CONSTRUCT = "JCP2022_900001"
 
 MICRO_CONFIG = pd.read_csv(
     "https://raw.githubusercontent.com/jump-cellpainting/datasets/181fa0dc96b0d68511b437cf75a712ec782576aa/metadata/microscope_config.csv"
@@ -121,14 +110,10 @@ def get_well_metadata(plate_types: list[str]):
     if "CRISPR" in plate_types:
         crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
         well_metadata = well_metadata.merge(crispr_metadata, how="inner")
-    # Use readable names for controls and non-treatment codes
-    well_metadata["Metadata_JCP2022"] = well_metadata["Metadata_JCP2022"].apply(
-        lambda x: MAPPER.get(x, x)
-    )
     # Filter out wells
     well_metadata = well_metadata[
         ~well_metadata["Metadata_JCP2022"].isin(
-            ["UNTREATED", "UNKNOWN", "BAD CONSTRUCT"]
+            [UNTREATED, UNKNOWN, BAD_CONSTRUCT]
         )
     ]
 

@@ -8,7 +8,7 @@ from scipy.stats import median_abs_deviation
 from tqdm.contrib.concurrent import thread_map
 from preprocessing.io import merge_parquet
 
-from .metadata import find_feat_cols, find_meta_cols
+from .metadata import find_feat_cols, find_meta_cols, DMSO
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -91,9 +91,9 @@ def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_norm_stats(
-        parquet_path, 
-        df_stats_path, 
-        negcon_list = ['DMSO'], 
+        parquet_path,
+        df_stats_path,
+        negcon_list = [DMSO],
         use_negcon = False):
     '''create platewise statistics for columns without nan/inf values only'''
     logger.info('Loading data')
