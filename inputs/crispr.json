@@ -4,10 +4,10 @@
     "keep_image_features": false,
     "use_mad_negcon": false,
     "sources": [
-        "source_13"
+        "source_13", "source_4", "source_7"
     ],
     "plate_types": [
-        "CRISPR"
+        "CRISPR", "ORF", "COMPOUND"
     ],
     "batch_key": "Metadata_Batch",
     "label_key": "Metadata_JCP2022",
