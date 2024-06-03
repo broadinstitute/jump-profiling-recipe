@@ -105,12 +105,13 @@ def get_well_metadata(plate_types: list[str]):
     well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
     if "ORF" in plate_types:
         orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")
-        well_metadata = well_metadata.merge(orf_metadata, how="inner", on='Metadata_JCP2022')
+        well_metadata = well_metadata.merge(orf_metadata, how="outer", on='Metadata_JCP2022')
         # well_metadata = well_metadata[well_metadata['Metadata_pert_type']!='poscon']
     if "CRISPR" in plate_types:
         crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
-        well_metadata = well_metadata.merge(crispr_metadata, how="inner", on='Metadata_JCP2022')
+        well_metadata = well_metadata.merge(crispr_metadata, how="outer",on='Metadata_JCP2022')
     # Filter out wells
+   
     well_metadata = well_metadata[
         ~well_metadata["Metadata_JCP2022"].isin(
             [UNTREATED, UNKNOWN, BAD_CONSTRUCT]

@@ -58,7 +58,6 @@ def prealloc_params(sources, plate_types):
         .drop_duplicates()
         .apply(build_path, axis=1)
     ).values
-
     counts = thread_map(get_num_rows, paths, leave=False, desc="counts")
     slices = np.zeros((len(paths), 2), dtype=int)
     slices[:, 1] = np.cumsum(counts)
@@ -70,7 +69,7 @@ def load_data(sources, plate_types):
     """Load all plates given the params"""
     paths, slices = prealloc_params(sources, plate_types)
     total = slices[-1, 1]
-
+    
     with pq.ParquetFile(paths[0]) as f:
         meta_cols = find_meta_cols(f.schema.names)
         feat_cols = find_feat_cols(f.schema.names)
