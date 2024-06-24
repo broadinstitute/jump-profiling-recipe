@@ -263,6 +263,7 @@ def regress_out_cell_counts_parallel(
 
     results = thread_map(regress_out_cell_counts_parallel_helper, feature_cols)
 
+    import ipdb; ipdb.set_trace()
     print('Updating dataframe')
 
     for res in results:

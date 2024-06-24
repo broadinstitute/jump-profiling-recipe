@@ -1,6 +1,6 @@
 {
-    "scenario": "crispr_allmodalities_largebatch_updatedpipeline",
-    "pipeline": "profiles_wellpos_cc_var_mad_int_featselect_harmony_PCA_corrected",
+    "scenario": "crispr_allmodalities_largebatch_updatedpipeline_newbatch",
+    "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected",
     "keep_image_features": false,
     "use_mad_negcon": false,
     "sources": [

@@ -93,12 +93,11 @@ def load_data(sources, plate_types):
 
 
 def add_pert_type(
-    meta: pd.DataFrame, col: str = "Metadata_pert_type", negcon_list: list = [DMSO]
+    meta: pd.DataFrame, col: str = "Metadata_pert_type",poscon_list:list =["JCP2022_012818","JCP2022_050797","JCP2022_064022","JCP2022_035095" , "JCP2022_046054", "JCP2022_025848", "JCP2022_037716", "JCP2022_085227", "JCP2022_805264", "JCP2022_915132"], negcon_list: list = ["JCP2022_800001", "JCP2022_800002", "JCP2022_033924", "JCP2022_915131", "JCP2022_915130", "JCP2022_915129", "JCP2022_915128"]
 ):
-    if not col in meta.columns:
-        meta[col] = "trt"
-        meta.loc[~meta["Metadata_JCP2022"].str.startswith("JCP"), col] = "poscon"
-        meta.loc[meta["Metadata_JCP2022"].isin(negcon_list), col] = "negcon"
+    meta[col] = "trt"
+    meta.loc[meta["Metadata_JCP2022"].isin(poscon_list), col] = "poscon"
+    meta.loc[meta["Metadata_JCP2022"].isin(negcon_list), col] = "negcon"
     meta[col] = meta[col].astype("category")
 
 
