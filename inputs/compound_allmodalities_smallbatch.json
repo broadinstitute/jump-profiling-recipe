@@ -1,0 +1,20 @@
+{
+  "scenario": "compound_allmodalities_smallbatch",
+    "pipeline": "profiles_var_mad_int_featselect_harmony",
+    "keep_image_features": true,
+    "use_mad_negcon": true,
+    "sources": [
+        "source_13", "source_4", "source_7"
+    ],
+    "plate_types": [
+        "COMPOUND", "TARGET2", "ORF", "CRISPR"
+    ],
+    "batch_key": "Metadata_Source",
+    "label_key": "Metadata_JCP2022",
+    "column_norm": "Metadata_JCP2022",
+    "values_norm": [
+        "JCP2022_033924", "JCP2022_800001", "JCP2022_800002", "JCP2022_915131", "JCP2022_915130", "JCP2022_915129", "JCP2022_915128"
+    ],
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 25
+}

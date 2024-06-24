@@ -76,8 +76,7 @@ def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame):
     stats['Metadata_Source'] = stats['Metadata_Plate'].map(source_map)
     parts = stats['feature'].str.split('_', expand=True)
     stats['compartment'] = parts[0].astype('category')
-    stats['family'] = parts[range(3)].apply('_'.join,
-                                            axis=1).astype('category')
+   #stats['family'] = parts[range(3)].apply('_'.join, axis=1).astype('category')
 
 
 def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
