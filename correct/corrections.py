@@ -265,9 +265,13 @@ def regress_out_cell_counts_parallel(
     mask = np.isnan(resid)
     vals = df[feature_cols].values
     vals = mask * vals + (1 - mask) * resid
-    print("updating dataframe")
-    df[feature_cols] = vals
+    print("creating dataframe")
+    df_res = pd.DataFrame(index=df.index, columns=feature_cols, data=vals)
+    print("adding remaining columns")
+    for c in df:
+        if c not in df_res:
+            df_res[c] = df[c].values
     print("remove nans")
-    df = remove_nan_features(df)
+    df_res = remove_nan_features(df_res)
     print("save file")
-    df.to_parquet(output_path, index=False)
+    df_res.to_parquet(output_path, index=False)
