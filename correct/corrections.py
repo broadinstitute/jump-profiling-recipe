@@ -258,14 +258,15 @@ def regress_out_cell_counts_parallel(
           
     print(f'Number of features to regress: {len(feature_cols)}')
     resid = np.empty((len(df), len(feature_cols)), dtype=np.float32)
-    ix = None
     for i, feature in tqdm(enumerate(feature_cols), leave=False, total=len(feature_cols)):
         model = ols(f"{feature} ~ {cc_col}", data=df).fit()
         resid[model.resid.index, i] = model.resid.values
     print("masking nans")
     mask = np.isnan(resid)
     vals = df[feature_cols].values
-    df[feature_cols] = mask * vals + (1 - mask) * resid
+    vals = mask * vals + (1 - mask) * resid
+    print("updating dataframe")
+    df[feature_cols] = vals
     print("remove nans")
     df = remove_nan_features(df)
     print("save file")
