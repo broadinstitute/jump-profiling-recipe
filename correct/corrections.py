@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 from statsmodels.formula.api import ols
 import logging
+from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
@@ -41,14 +42,13 @@ def subtract_well_mean(input_path: str, output_path: str):
     """
     Subtract the mean of each feature per each well.
     """
-    ann_df = pd.read_parquet(input_path)
-    ann_df = drop_na_feature_rows(ann_df)
+    df = pd.read_parquet(input_path)
+    df = drop_na_feature_rows(df)
 
-    feature_cols = ann_df.filter(regex="^(?!Metadata_)").columns
-    ann_df[feature_cols] = ann_df.groupby("Metadata_Well")[feature_cols].transform(
-        lambda x: x - x.mean()
-    )
-    ann_df.to_parquet(output_path, index=False)
+    feature_cols = df.filter(regex="^(?!Metadata_)").columns
+    mean_ = df.groupby('Metadata_Well')[feature_cols].transform('mean').values
+    df[feature_cols] = df[feature_cols].values - mean_
+    df.to_parquet(output_path, index=False)
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
@@ -255,20 +255,18 @@ def regress_out_cell_counts_parallel(
     feature_cols = [
         feature for feature in feature_cols if df[feature].nunique() > min_unique
     ]
-    print(f'Number of features to regress: {len(feature_cols)}')
           
-    def regress_out_cell_counts_parallel_helper(feature):
+    print(f'Number of features to regress: {len(feature_cols)}')
+    resid = np.empty((len(df), len(feature_cols)), dtype=np.float32)
+    ix = None
+    for i, feature in tqdm(enumerate(feature_cols), leave=False, total=len(feature_cols)):
         model = ols(f"{feature} ~ {cc_col}", data=df).fit()
-        return {feature: model.resid}
-
-    results = thread_map(regress_out_cell_counts_parallel_helper, feature_cols)
-
-    import ipdb; ipdb.set_trace()
-    print('Updating dataframe')
-
-    for res in results:
-        df.update(pd.DataFrame(res))
-
-    # Check for NaN/INF columns and drop
+        resid[model.resid.index, i] = model.resid.values
+    print("masking nans")
+    mask = np.isnan(resid)
+    vals = df[feature_cols].values
+    df[feature_cols] = mask * vals + (1 - mask) * resid
+    print("remove nans")
     df = remove_nan_features(df)
+    print("save file")
     df.to_parquet(output_path, index=False)
