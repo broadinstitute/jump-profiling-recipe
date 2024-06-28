@@ -77,7 +77,6 @@
                     wget
                     jq
                     tree
-                    texlive.combined.scheme-full
                   ] ++ lib.optionals stdenv.isDarwin [
                     darwin.libobjc
                     frameworks.Security
@@ -98,8 +97,8 @@
                   enterShell = ''
                     export LD_LIBRARY_PATH=$NIX_LD_LIBRARY_PATH
                     eval "$(micromamba shell hook -s bash)"
-                    micromamba create -r .venv --file environment.yml
-                    micromamba activate .venv/envs/graphdti
+                    micromamba create -r .venv --file environment.yaml
+                    micromamba activate .venv/envs/jump_recipe
                   '';
                 }
               ];
