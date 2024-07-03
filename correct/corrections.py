@@ -6,7 +6,6 @@ from tqdm.contrib.concurrent import thread_map
 import sys
 sys.path.append('..')
 from preprocessing.stats import remove_nan_infs_columns
-from preprocessing.io import report_nan_infs_columns
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
@@ -52,7 +51,7 @@ def subtract_well_mean(input_path: str, output_path: str):
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
-    """Transform data by applying PCA. 
+    """Transform data by applying PCA.
 
     Parameters
     ----------
@@ -126,7 +125,7 @@ def annotate_chromosome(df, df_meta):
 
     if "Metadata_arm" not in df.columns:
         df["Metadata_arm"] = df["Metadata_Locus"].apply(lambda x: split_arm(str(x)))
-    
+
     if "Metadata_Chromosome" not in df.columns:
         df["Metadata_Chromosome"] = df["Metadata_Chromosome"].apply(
             lambda x: "12" if x == "12 alternate reference locus" else x
@@ -212,9 +211,13 @@ def arm_correction(
     df_crispr.to_parquet(output_path, index=False)
 
 def merge_cell_counts(df: pd.DataFrame, cc_path):
-    df_cc = pd.read_csv(cc_path).rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"})
+    df_cc = pd.read_csv(cc_path, low_memory=False,
+                        dtype={"Metadata_Plate": str,
+                               "Metadata_Well": str,
+                               "Metadata_Count_Cells": int})
+    df_cc.rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"}, inplace=True)
     df = df.merge(df_cc[['Metadata_Well', 'Metadata_Plate', 'Cells_Count_Count']],
-                  on=['Metadata_Well', 'Metadata_Plate'], 
+                  on=['Metadata_Well', 'Metadata_Plate'],
                   how='left').reset_index(drop=True)
     return df
 

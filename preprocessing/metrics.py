@@ -4,12 +4,14 @@ import pandas as pd
 from preprocessing.io import split_parquet
 
 
-def _index(meta, plate_types, ignore_codes=None):
+def _index(meta, plate_types, ignore_codes=None, include_codes=None):
     '''Select samples to be used in mAP computation'''
     index = meta['Metadata_PlateType'].isin(plate_types)
     index &= (meta['Metadata_pert_type'] != 'poscon')
     valid_cmpd = meta.loc[index, 'Metadata_JCP2022'].value_counts()
-    valid_cmpd = valid_cmpd[valid_cmpd > 1].index
+    valid_cmpd = valid_cmpd[valid_cmpd.between(2, 1000)].index
+    if include_codes:
+        valid_cmpd = valid_cmpd.union(include_codes)
     index &= meta['Metadata_JCP2022'].isin(valid_cmpd)
     # TODO: This compound has many more replicates than any other. ignoring it
     # for now. This filter should be done early on.
@@ -34,7 +36,7 @@ def _group_negcons(meta: pd.DataFrame, negcon_codes):
 
 def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
     meta, vals, _ = split_parquet(parquet_path)
-    ix = _index(meta, plate_types)
+    ix = _index(meta, plate_types, include_codes=negcon_codes)
     meta = meta[ix].copy()
     vals = vals[ix]
     _group_negcons(meta, negcon_codes)
