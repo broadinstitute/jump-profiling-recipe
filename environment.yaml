@@ -12,5 +12,8 @@ dependencies:
   - tqdm=4.66.2
   - awscli=2.15.53
   - pip=23.3.1
+  - jq=1.7.1
+  - patsy=0.5.6
+  - statsmodels=0.14.2
   - pip:
       - git+https://github.com/cytomining/copairs.git@v0.4.1

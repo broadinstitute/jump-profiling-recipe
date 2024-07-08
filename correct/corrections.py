@@ -6,12 +6,12 @@ from tqdm.contrib.concurrent import thread_map
 import sys
 sys.path.append('..')
 from preprocessing.stats import remove_nan_infs_columns
-from preprocessing.io import report_nan_infs_columns
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
 from statsmodels.formula.api import ols
 import logging
+from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
@@ -41,18 +41,17 @@ def subtract_well_mean(input_path: str, output_path: str):
     """
     Subtract the mean of each feature per each well.
     """
-    ann_df = pd.read_parquet(input_path)
-    ann_df = drop_na_feature_rows(ann_df)
+    df = pd.read_parquet(input_path)
+    df = drop_na_feature_rows(df)
 
-    feature_cols = ann_df.filter(regex="^(?!Metadata_)").columns
-    ann_df[feature_cols] = ann_df.groupby("Metadata_Well")[feature_cols].transform(
-        lambda x: x - x.mean()
-    )
-    ann_df.to_parquet(output_path, index=False)
+    feature_cols = df.filter(regex="^(?!Metadata_)").columns
+    mean_ = df.groupby('Metadata_Well')[feature_cols].transform('mean').values
+    df[feature_cols] = df[feature_cols].values - mean_
+    df.to_parquet(output_path, index=False)
 
 
 def transform_data(input_path: str, output_path: str, variance=0.98):
-    """Transform data by applying PCA. 
+    """Transform data by applying PCA.
 
     Parameters
     ----------
@@ -126,7 +125,7 @@ def annotate_chromosome(df, df_meta):
 
     if "Metadata_arm" not in df.columns:
         df["Metadata_arm"] = df["Metadata_Locus"].apply(lambda x: split_arm(str(x)))
-    
+
     if "Metadata_Chromosome" not in df.columns:
         df["Metadata_Chromosome"] = df["Metadata_Chromosome"].apply(
             lambda x: "12" if x == "12 alternate reference locus" else x
@@ -212,9 +211,13 @@ def arm_correction(
     df_crispr.to_parquet(output_path, index=False)
 
 def merge_cell_counts(df: pd.DataFrame, cc_path):
-    df_cc = pd.read_csv(cc_path).rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"})
+    df_cc = pd.read_csv(cc_path, low_memory=False,
+                        dtype={"Metadata_Plate": str,
+                               "Metadata_Well": str,
+                               "Metadata_Count_Cells": int})
+    df_cc.rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"}, inplace=True)
     df = df.merge(df_cc[['Metadata_Well', 'Metadata_Plate', 'Cells_Count_Count']],
-                  on=['Metadata_Well', 'Metadata_Plate'], 
+                  on=['Metadata_Well', 'Metadata_Plate'],
                   how='left').reset_index(drop=True)
     return df
 
@@ -255,20 +258,23 @@ def regress_out_cell_counts_parallel(
     feature_cols = [
         feature for feature in feature_cols if df[feature].nunique() > min_unique
     ]
-    print(f'Number of features to regress: {len(feature_cols)}')
           
-    def regress_out_cell_counts_parallel_helper(feature):
+    print(f'Number of features to regress: {len(feature_cols)}')
+    resid = np.empty((len(df), len(feature_cols)), dtype=np.float32)
+    for i, feature in tqdm(enumerate(feature_cols), leave=False, total=len(feature_cols)):
         model = ols(f"{feature} ~ {cc_col}", data=df).fit()
-        return {feature: model.resid}
-
-    results = thread_map(regress_out_cell_counts_parallel_helper, feature_cols)
-
-    import ipdb; ipdb.set_trace()
-    print('Updating dataframe')
-
-    for res in results:
-        df.update(pd.DataFrame(res))
-
-    # Check for NaN/INF columns and drop
-    df = remove_nan_features(df)
-    df.to_parquet(output_path, index=False)
+        resid[model.resid.index, i] = model.resid.values
+    print("masking nans")
+    mask = np.isnan(resid)
+    vals = df[feature_cols].values
+    vals = mask * vals + (1 - mask) * resid
+    print("creating dataframe")
+    df_res = pd.DataFrame(index=df.index, columns=feature_cols, data=vals)
+    print("adding remaining columns")
+    for c in df:
+        if c not in df_res:
+            df_res[c] = df[c].values
+    print("remove nans")
+    df_res = remove_nan_features(df_res)
+    print("save file")
+    df_res.to_parquet(output_path, index=False)
