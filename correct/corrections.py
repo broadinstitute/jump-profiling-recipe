@@ -100,7 +100,7 @@ def annotate_gene(df, df_meta):
         df = df.merge(
             df_meta[["Metadata_JCP2022", "Metadata_Symbol"]],
             on="Metadata_JCP2022",
-            how="inner",
+            how="left",
         )
     return df
 
@@ -166,7 +166,10 @@ def arm_correction(
 ):
     """Perform chromosome arm correction"""
     df_exp = pd.read_csv(gene_expression_file)
-    df_crispr = pd.read_parquet(crispr_profile_path)
+    df = pd.read_parquet(crispr_profile_path)
+    crispr_ix = df["Metadata_PlateType"] == "CRISPR"
+    df_crispr = df[crispr_ix].copy()
+    df = df[~crispr_ix].copy()
 
     df_no_arm = df_crispr[df_crispr["Metadata_Chromosome"].isna()].reset_index(
         drop=True
@@ -208,7 +211,8 @@ def arm_correction(
     col = df_no_arm.columns
     df_crispr = pd.concat([df_no_arm, df_crispr[col]], axis=0, ignore_index=True)
 
-    df_crispr.to_parquet(output_path, index=False)
+    df = pd.concat([df, df_crispr])
+    df.to_parquet(output_path, index=False)
 
 def merge_cell_counts(df: pd.DataFrame, cc_path):
     df_cc = pd.read_csv(cc_path, low_memory=False,
