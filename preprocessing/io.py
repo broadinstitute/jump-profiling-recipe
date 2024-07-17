@@ -69,7 +69,7 @@ def load_data(sources, plate_types):
     """Load all plates given the params"""
     paths, slices = prealloc_params(sources, plate_types)
     total = slices[-1, 1]
-    
+
     with pq.ParquetFile(paths[0]) as f:
         meta_cols = find_meta_cols(f.schema.names)
         feat_cols = find_feat_cols(f.schema.names)
@@ -117,24 +117,27 @@ def add_microscopy_info(meta: pd.DataFrame):
 def write_parquet(sources, plate_types, output_file, negcon_list=[DMSO]):
     """Write the parquet dataset given the params"""
     dframe = load_data(sources, plate_types)
-    # Efficient merge
+    # Drop Image features
+    image_col = [col for col in dframe.columns if "Image_" in col]
+    dframe.drop(image_col, axis=1, inplace=True)
+
+    # Get metadata
     meta = load_metadata(sources, plate_types)
     add_pert_type(meta, negcon_list=negcon_list)
     add_row_col(meta)
     add_microscopy_info(meta)
     foreign_key = ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]
     meta = dframe[foreign_key].merge(meta, on=foreign_key, how="left")
-    assert dframe.shape[0] == meta.shape[0]
+
+    # Dropping samples with no metadata
+    jcp_col = meta.pop("Metadata_JCP2022").astype("category")
+    dframe["Metadata_JCP2022"] = jcp_col
+    dframe.dropna(subset=["Metadata_JCP2022"], inplace=True)
+    meta = meta[~jcp_col.isna()].copy()
+    assert (meta.index == dframe.index).all()
+
     for c in meta:
         dframe[c] = meta[c].astype("category")
-    # Drop Image features
-    image_col = [col for col in dframe.columns if "Image_" in col]
-    dframe = dframe.drop(image_col, axis=1)
-    # Dropping samples with no metadata
-    dframe.dropna(subset=["Metadata_JCP2022"], inplace=True)
-
-    # Dropping positive controls
-    # dframe = dframe[dframe["Metadata_pert_type"] != "poscon"]
 
     dframe.reset_index(drop=True, inplace=True)
     dframe.to_parquet(output_file)
