@@ -21,7 +21,7 @@ def harmony(dframe_path, batch_key, output_path):
         meta_[batch_key] = meta_[batch_key].cat.remove_unused_categories()
     harmony_out = run_harmony(
         feats,
-        meta,
+        meta_,
         batch_key,
         max_iter_harmony=20,
         nclust=300,  # Number of compounds

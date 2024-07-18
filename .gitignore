@@ -18,3 +18,4 @@ inputs/source_*
 *log
 .venv
 .devenv
+*pdf
