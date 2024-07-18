@@ -15,3 +15,6 @@ inputs/source_*
 *npz
 *pkl
 *pickle
+*log
+.venv
+.devenv
