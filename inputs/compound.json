@@ -9,7 +9,7 @@
     "plate_types": [
         "COMPOUND", "TARGET2"
     ],
-    "batch_key": "Metadata_Source",
+    "batch_key": "Metadata_Batch",
     "label_key": "Metadata_JCP2022",
     "column_norm": "Metadata_JCP2022",
     "values_norm": [
