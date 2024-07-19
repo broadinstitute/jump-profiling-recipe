@@ -36,7 +36,7 @@ def find_meta_cols(cols: Iterable[str]):
     return meta_cols
 
 
-def get_source_4_plate_redlist(plate_types: list[str]):
+def get_orf_plate_redlist(plate_types: list[str]):
     """Get set of plate_id's  that should be not considered in the analysis"""
     # https://github.com/jump-cellpainting/jump-orf-analysis/issues/1#issuecomment-921888625
     # Low concentration plates
@@ -44,18 +44,11 @@ def get_source_4_plate_redlist(plate_types: list[str]):
     # https://github.com/jump-cellpainting/aws/issues/70#issuecomment-1182444836
     redlist.add("BR00123528A")
 
+    # filter ORF plates.
     metadata = pd.read_csv("inputs/experiment-metadata.tsv", sep="\t")
-    if "ORF" in plate_types:
-        # filter ORF plates.
-        query = 'Batch=="Batch12"'
-        bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
-        redlist |= bad_plates
-
-    if "TARGET2" in plate_types:
-        # filter TARGET2 plates
-        query = 'Anomaly!="none"'
-        bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
-        redlist |= bad_plates
+    query = 'Batch=="Batch12"'
+    bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
+    redlist |= bad_plates
     return redlist
 
 
@@ -83,8 +76,8 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     """Create filtered metadata DataFrame"""
     plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
     # Filter plates from source_4
-    if "source_4" in sources:
-        redlist = get_source_4_plate_redlist(plate_types)
+    if "ORF" in plate_types:
+        redlist = get_orf_plate_redlist(plate_types)
         plate_metadata = plate_metadata[~plate_metadata["Metadata_Plate"].isin(redlist)]
 
     # Filter plates from source_3 batches without DMSO
@@ -111,7 +104,7 @@ def get_well_metadata(plate_types: list[str]):
         crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
         well_metadata = well_metadata.merge(crispr_metadata, how="left",on='Metadata_JCP2022')
     # Filter out wells
-   
+
     well_metadata = well_metadata[
         ~well_metadata["Metadata_JCP2022"].isin(
             [UNTREATED, UNKNOWN, BAD_CONSTRUCT]
