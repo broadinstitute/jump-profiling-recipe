@@ -8,7 +8,7 @@ dependencies:
   - pyarrow=11.0.0
   - scikit-learn=1.3.2
   - snakemake-minimal=7.32.4
-  - harmonypy=0.0.9
+  - harmonypy=0.0.10
   - tqdm=4.66.2
   - awscli=2.15.53
   - pip=23.3.1
