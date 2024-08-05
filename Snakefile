@@ -35,7 +35,6 @@ rule write_parquet:
             config["sources"],
             config["plate_types"],
             *output,
-            negcon_list=config["values_norm"],
         )
 
 
