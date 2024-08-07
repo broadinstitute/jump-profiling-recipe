@@ -47,7 +47,7 @@ mult_dict = {
 }
 uniq_dict = {
     "orf": "outputs/orf/metrics/profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
-    "crispr": "outputs/crispr/metrics/profiles_wellpos_var_mad_int_featselect",
+    "crispr": "outputs/crispr/metrics/profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected",
     "compound": "outputs/compound/metrics/profiles_var_mad_int_featselect_harmony",
 }
 mult_name, uniq_name = argv[1:3]
@@ -110,3 +110,9 @@ print(f"T-test statistic: {results['t_statistic']}")
 print(f"T-test p-value (one-tailed): {results['t_pval']}")
 print(f"Wilcoxon signed-rank statistic: {results['z_statistic']}")
 print(f"Wilcoxon signed-rank p-value (one-tailed): {results['w_pval']}")
+print(
+    uniq.groupby(["below_corrected_p_uniq", "below_corrected_p_mult"])
+    .size()
+    .reset_index()
+    .pivot(index="below_corrected_p_uniq", columns="below_corrected_p_mult", values=0)
+)
