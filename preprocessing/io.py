@@ -114,7 +114,7 @@ def add_microscopy_info(meta: pd.DataFrame):
     meta["Metadata_Microscope"] = configs
 
 
-def write_parquet(sources, plate_types, output_file, negcon_list=[DMSO]):
+def write_parquet(sources, plate_types, output_file):
     """Write the parquet dataset given the params"""
     dframe = load_data(sources, plate_types)
     # Drop Image features
@@ -123,7 +123,7 @@ def write_parquet(sources, plate_types, output_file, negcon_list=[DMSO]):
 
     # Get metadata
     meta = load_metadata(sources, plate_types)
-    add_pert_type(meta, negcon_list=negcon_list)
+    add_pert_type(meta)
     add_row_col(meta)
     add_microscopy_info(meta)
     foreign_key = ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]

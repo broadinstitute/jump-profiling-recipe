@@ -1,0 +1,22 @@
+{
+    "scenario": "orf_allmodalities_largebatch",
+    "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
+    "keep_image_features": false,
+    "use_mad_negcon": false,
+    "sources": [
+        "source_1", "source_2", "source_3", "source_5", "source_6", "source_7", "source_8", "source_9", "source_10", "source_11", "source_4", "source_13"
+    ],
+    "plate_types": [
+        "COMPOUND", "TARGET2", "ORF", "CRISPR"
+    ],
+    "batch_key": "Metadata_Batch",
+    "label_key": "Metadata_JCP2022",
+    "column_norm": "Metadata_JCP2022",
+    "values_norm": [
+        "JCP2022_033924", "JCP2022_800001", "JCP2022_800002", "JCP2022_915131", "JCP2022_915130", "JCP2022_915129", "JCP2022_915128"
+    ],
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 25,
+    "cc_path": "inputs/all_cell_counts.csv.gz"
+}
+

@@ -44,7 +44,8 @@ def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
         meta,
         vals,
         pos_sameby=['Metadata_JCP2022'],
-        pos_diffby=['Metadata_Well'],
+        # pos_diffby=['Metadata_Well'],
+        pos_diffby=[],
         neg_sameby=['Metadata_Plate'],
         neg_diffby=['Metadata_pert_type', 'Metadata_JCP2022'],
         batch_size=20000)
