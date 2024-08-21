@@ -2,6 +2,7 @@ import copairs.map as copairs
 import pandas as pd
 
 from preprocessing.io import split_parquet
+from preprocessing.metadata import NEGCON_CODES
 
 
 def _index(meta, plate_types, ignore_codes=None, include_codes=None):
@@ -21,12 +22,12 @@ def _index(meta, plate_types, ignore_codes=None, include_codes=None):
     return index.values
 
 
-def _group_negcons(meta: pd.DataFrame, negcon_codes):
+def _group_negcons(meta: pd.DataFrame):
     '''
     Hack to avoid mAP computation for negcons. Assign a unique id for every
     negcon so that no pairs are found for such samples.
     '''
-    negcon_ix = (meta['Metadata_JCP2022'].isin(negcon_codes))
+    negcon_ix = (meta['Metadata_JCP2022'].isin(NEGCON_CODES))
     n_negcon = negcon_ix.sum()
     negcon_ids = [f'negcon_{i}' for i in range(n_negcon)]
     pert_id = meta['Metadata_JCP2022'].astype("category").cat.add_categories(negcon_ids)
@@ -34,12 +35,12 @@ def _group_negcons(meta: pd.DataFrame, negcon_codes):
     meta['Metadata_JCP2022'] = pert_id
 
 
-def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
+def average_precision_negcon(parquet_path, ap_path, plate_types):
     meta, vals, _ = split_parquet(parquet_path)
-    ix = _index(meta, plate_types, include_codes=negcon_codes)
+    ix = _index(meta, plate_types, include_codes=NEGCON_CODES)
     meta = meta[ix].copy()
     vals = vals[ix]
-    _group_negcons(meta, negcon_codes)
+    _group_negcons(meta)
     result = copairs.average_precision(
         meta,
         vals,
@@ -53,9 +54,9 @@ def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
     result.reset_index(drop=True).to_parquet(ap_path)
 
 
-def average_precision_nonrep(parquet_path, ap_path, plate_types, negcon_codes):
+def average_precision_nonrep(parquet_path, ap_path, plate_types):
     meta, vals, _ = split_parquet(parquet_path)
-    ix = _index(meta, plate_types, ignore_codes=negcon_codes)
+    ix = _index(meta, plate_types, ignore_codes=NEGCON_CODES)
     meta = meta[ix].copy()
     vals = vals[ix]
     result = copairs.average_precision(
