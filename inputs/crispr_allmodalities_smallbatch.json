@@ -11,7 +11,6 @@
     ],
     "batch_key": "Metadata_Batch",
     "label_key": "Metadata_JCP2022",
-    "column_norm": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25,
     "cc_path": "inputs/crispr_cell_counts.csv.gz"
