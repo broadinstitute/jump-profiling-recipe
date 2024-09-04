@@ -11,10 +11,6 @@
     ],
     "batch_key": "Metadata_Batch",
     "label_key": "Metadata_JCP2022",
-    "column_norm": "Metadata_JCP2022",
-    "values_norm": [
-        "JCP2022_915131", "JCP2022_915130", "JCP2022_915129", "JCP2022_915128"
-    ],
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25,
     "cc_path": "inputs/orf_cell_counts.csv.gz"

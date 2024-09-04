@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from preprocessing.io import merge_parquet, split_parquet
+from preprocessing.metadata import NEGCON_CODES
 from pycytominer.operations import Spherize
 
 
@@ -13,11 +14,10 @@ def log_uniform_sampling(min_=-5, max_=3, size=25, seed=[6, 12, 2022]):
     return 10.**rng.uniform(min_, max_, size=size)
 
 
-def sphering(dframe_path, method, epsilon, column_norm, values_norm,
-             sphered_path, spherer_path):
+def sphering(dframe_path, method, epsilon, sphered_path, spherer_path):
     spherer = Spherize(epsilon=epsilon, method=method)
     meta, vals, features = split_parquet(dframe_path)
-    train_ix = meta[column_norm].isin(values_norm).values
+    train_ix = meta["Metadata_JCP2022"].isin(NEGCON_CODES).values
     spherer.fit(vals[train_ix])
     vals = spherer.transform(vals).astype(np.float32)
     merge_parquet(meta, vals, features, sphered_path)

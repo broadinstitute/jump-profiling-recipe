@@ -10,8 +10,6 @@ rule sphering_explore:
     params:
         method=config["sphering_method"],
         reg=lambda wc: float(wc.reg),
-        column_norm=config["column_norm"],
-        values_norm=config["values_norm"],
     run:
         pp.sphering.sphering(*input, *params, *output)
 

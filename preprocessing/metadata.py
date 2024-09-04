@@ -1,6 +1,7 @@
 """
 Functions to load metadata information
 """
+
 import logging
 from collections.abc import Iterable
 
@@ -10,7 +11,6 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
 
-DMSO = "JCP2022_033924"
 UNTREATED = "JCP2022_999999"
 UNKNOWN = "JCP2022_UNKNOWN"
 BAD_CONSTRUCT = "JCP2022_900001"
@@ -22,6 +22,28 @@ MICRO_CONFIG["Metadata_Source"] = "source_" + MICRO_CONFIG["Metadata_Source"].as
     str
 )
 MICRO_CONFIG = MICRO_CONFIG.set_index("Metadata_Source")["Metadata_Microscope_Name"]
+
+POSCON_CODES = [
+    "JCP2022_012818",
+    "JCP2022_050797",
+    "JCP2022_064022",
+    "JCP2022_035095",
+    "JCP2022_046054",
+    "JCP2022_025848",
+    "JCP2022_037716",
+    "JCP2022_085227",
+    "JCP2022_805264",
+    "JCP2022_915132",
+]
+NEGCON_CODES = [
+    "JCP2022_800001",
+    "JCP2022_800002",
+    "JCP2022_033924",
+    "JCP2022_915131",
+    "JCP2022_915130",
+    "JCP2022_915129",
+    "JCP2022_915128",
+]
 
 
 def find_feat_cols(cols: Iterable[str]):
