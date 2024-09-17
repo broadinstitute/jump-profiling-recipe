@@ -1,5 +1,5 @@
 {
-    "scenario": "crispr_allmodalities_largebatch_updatedpipeline_newbatch",
+    "scenario": "pipeline_3",
     "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected",
     "keep_image_features": false,
     "use_mad_negcon": false,

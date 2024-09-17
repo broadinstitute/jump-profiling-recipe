@@ -1,5 +1,5 @@
 {
-    "scenario": "compound_allmodalities_largebatch",
+    "scenario": "pipeline_1",
     "pipeline": "profiles_var_mad_int_featselect_harmony",
     "keep_image_features": true,
     "use_mad_negcon": true,
