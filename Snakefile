@@ -35,7 +35,6 @@ rule write_parquet:
             config["sources"],
             config["plate_types"],
             *output,
-            negcon_list=config["values_norm"],
         )
 
 
@@ -46,14 +45,8 @@ rule compute_norm_stats:
         "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     params:
         use_negcon=config["use_mad_negcon"],
-        negcon_list=config["values_norm"],
     run:
-        pp.stats.compute_norm_stats(
-            *input,
-            *output,
-            use_negcon=params.use_negcon,
-            negcon_list=params.negcon_list,
-        )
+        pp.stats.compute_norm_stats(*input, *output, **params)
 
 
 rule select_variant_feats:

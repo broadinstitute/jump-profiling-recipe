@@ -8,7 +8,7 @@ from scipy.stats import median_abs_deviation
 from tqdm.contrib.concurrent import thread_map
 from preprocessing.io import merge_parquet
 
-from .metadata import find_feat_cols, find_meta_cols, DMSO
+from .metadata import find_feat_cols, find_meta_cols, NEGCON_CODES
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -76,8 +76,7 @@ def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame):
     stats['Metadata_Source'] = stats['Metadata_Plate'].map(source_map)
     parts = stats['feature'].str.split('_', expand=True)
     stats['compartment'] = parts[0].astype('category')
-    stats['family'] = parts[range(3)].apply('_'.join,
-                                            axis=1).astype('category')
+   #stats['family'] = parts[range(3)].apply('_'.join, axis=1).astype('category')
 
 
 def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
@@ -93,15 +92,14 @@ def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
 def compute_norm_stats(
         parquet_path,
         df_stats_path,
-        negcon_list = [DMSO],
-        use_negcon = False):
+        use_negcon):
     '''create platewise statistics for columns without nan/inf values only'''
     logger.info('Loading data')
     dframe = pd.read_parquet(parquet_path)
     logger.info('Removing nan and inf columns')
     dframe = remove_nan_infs_columns(dframe)
     if use_negcon:
-        dframe_norm = dframe[dframe['Metadata_JCP2022'].isin(negcon_list)]
+        dframe_norm = dframe[dframe['Metadata_JCP2022'].isin(NEGCON_CODES)]
         logger.info('computing plate stats for negcons')
     else:
         dframe_norm = dframe

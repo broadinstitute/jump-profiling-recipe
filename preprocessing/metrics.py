@@ -2,14 +2,17 @@ import copairs.map as copairs
 import pandas as pd
 
 from preprocessing.io import split_parquet
+from preprocessing.metadata import NEGCON_CODES
 
 
-def _index(meta, plate_types, ignore_codes=None):
+def _index(meta, plate_types, ignore_codes=None, include_codes=None):
     '''Select samples to be used in mAP computation'''
     index = meta['Metadata_PlateType'].isin(plate_types)
     index &= (meta['Metadata_pert_type'] != 'poscon')
     valid_cmpd = meta.loc[index, 'Metadata_JCP2022'].value_counts()
-    valid_cmpd = valid_cmpd[valid_cmpd > 1].index
+    valid_cmpd = valid_cmpd[valid_cmpd.between(2, 1000)].index
+    if include_codes:
+        valid_cmpd = valid_cmpd.union(include_codes)
     index &= meta['Metadata_JCP2022'].isin(valid_cmpd)
     # TODO: This compound has many more replicates than any other. ignoring it
     # for now. This filter should be done early on.
@@ -19,12 +22,12 @@ def _index(meta, plate_types, ignore_codes=None):
     return index.values
 
 
-def _group_negcons(meta: pd.DataFrame, negcon_codes):
+def _group_negcons(meta: pd.DataFrame):
     '''
     Hack to avoid mAP computation for negcons. Assign a unique id for every
     negcon so that no pairs are found for such samples.
     '''
-    negcon_ix = (meta['Metadata_JCP2022'].isin(negcon_codes))
+    negcon_ix = (meta['Metadata_JCP2022'].isin(NEGCON_CODES))
     n_negcon = negcon_ix.sum()
     negcon_ids = [f'negcon_{i}' for i in range(n_negcon)]
     pert_id = meta['Metadata_JCP2022'].astype("category").cat.add_categories(negcon_ids)
@@ -32,17 +35,18 @@ def _group_negcons(meta: pd.DataFrame, negcon_codes):
     meta['Metadata_JCP2022'] = pert_id
 
 
-def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
+def average_precision_negcon(parquet_path, ap_path, plate_types):
     meta, vals, _ = split_parquet(parquet_path)
-    ix = _index(meta, plate_types)
+    ix = _index(meta, plate_types, include_codes=NEGCON_CODES)
     meta = meta[ix].copy()
     vals = vals[ix]
-    _group_negcons(meta, negcon_codes)
+    _group_negcons(meta)
     result = copairs.average_precision(
         meta,
         vals,
         pos_sameby=['Metadata_JCP2022'],
-        pos_diffby=['Metadata_Well'],
+        # pos_diffby=['Metadata_Well'],
+        pos_diffby=[],
         neg_sameby=['Metadata_Plate'],
         neg_diffby=['Metadata_pert_type', 'Metadata_JCP2022'],
         batch_size=20000)
@@ -50,9 +54,9 @@ def average_precision_negcon(parquet_path, ap_path, plate_types, negcon_codes):
     result.reset_index(drop=True).to_parquet(ap_path)
 
 
-def average_precision_nonrep(parquet_path, ap_path, plate_types, negcon_codes):
+def average_precision_nonrep(parquet_path, ap_path, plate_types):
     meta, vals, _ = split_parquet(parquet_path)
-    ix = _index(meta, plate_types, ignore_codes=negcon_codes)
+    ix = _index(meta, plate_types, ignore_codes=NEGCON_CODES)
     meta = meta[ix].copy()
     vals = vals[ix]
     result = copairs.average_precision(

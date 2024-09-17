@@ -10,7 +10,8 @@ from .metadata import (
     MICRO_CONFIG,
     find_feat_cols,
     find_meta_cols,
-    DMSO,
+    POSCON_CODES,
+    NEGCON_CODES
 )
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.DEBUG)
@@ -58,7 +59,6 @@ def prealloc_params(sources, plate_types):
         .drop_duplicates()
         .apply(build_path, axis=1)
     ).values
-
     counts = thread_map(get_num_rows, paths, leave=False, desc="counts")
     slices = np.zeros((len(paths), 2), dtype=int)
     slices[:, 1] = np.cumsum(counts)
@@ -93,13 +93,10 @@ def load_data(sources, plate_types):
     return dframe
 
 
-def add_pert_type(
-    meta: pd.DataFrame, col: str = "Metadata_pert_type", negcon_list: list = [DMSO]
-):
-    if not col in meta.columns:
-        meta[col] = "trt"
-        meta.loc[~meta["Metadata_JCP2022"].str.startswith("JCP"), col] = "poscon"
-        meta.loc[meta["Metadata_JCP2022"].isin(negcon_list), col] = "negcon"
+def add_pert_type(meta: pd.DataFrame, col: str = "Metadata_pert_type"):
+    meta[col] = "trt"
+    meta.loc[meta["Metadata_JCP2022"].isin(POSCON_CODES), col] = "poscon"
+    meta.loc[meta["Metadata_JCP2022"].isin(NEGCON_CODES), col] = "negcon"
     meta[col] = meta[col].astype("category")
 
 
@@ -116,27 +113,30 @@ def add_microscopy_info(meta: pd.DataFrame):
     meta["Metadata_Microscope"] = configs
 
 
-def write_parquet(sources, plate_types, output_file, negcon_list=[DMSO]):
+def write_parquet(sources, plate_types, output_file):
     """Write the parquet dataset given the params"""
     dframe = load_data(sources, plate_types)
-    # Efficient merge
+    # Drop Image features
+    image_col = [col for col in dframe.columns if "Image_" in col]
+    dframe.drop(image_col, axis=1, inplace=True)
+
+    # Get metadata
     meta = load_metadata(sources, plate_types)
-    add_pert_type(meta, negcon_list=negcon_list)
+    add_pert_type(meta)
     add_row_col(meta)
     add_microscopy_info(meta)
     foreign_key = ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]
     meta = dframe[foreign_key].merge(meta, on=foreign_key, how="left")
-    assert dframe.shape[0] == meta.shape[0]
+
+    # Dropping samples with no metadata
+    jcp_col = meta.pop("Metadata_JCP2022").astype("category")
+    dframe["Metadata_JCP2022"] = jcp_col
+    dframe.dropna(subset=["Metadata_JCP2022"], inplace=True)
+    meta = meta[~jcp_col.isna()].copy()
+    assert (meta.index == dframe.index).all()
+
     for c in meta:
         dframe[c] = meta[c].astype("category")
-    # Drop Image features
-    image_col = [col for col in dframe.columns if "Image_" in col]
-    dframe = dframe.drop(image_col, axis=1)
-    # Dropping samples with no metadata
-    dframe.dropna(subset=["Metadata_JCP2022"], inplace=True)
-
-    # Dropping positive controls
-    # dframe = dframe[dframe["Metadata_pert_type"] != "poscon"]
 
     dframe.reset_index(drop=True, inplace=True)
     dframe.to_parquet(output_file)
