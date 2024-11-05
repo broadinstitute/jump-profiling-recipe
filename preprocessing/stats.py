@@ -71,9 +71,10 @@ def get_plate_stats(dframe: pd.DataFrame):
 
 
 def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame):
-    source_map = meta[["Metadata_Source", "Metadata_Plate"]].drop_duplicates()
-    source_map = source_map.set_index("Metadata_Plate").Metadata_Source
-    stats["Metadata_Source"] = stats["Metadata_Plate"].map(source_map)
+    if "Metadata_Source" in meta.columns:
+        source_map = meta[["Metadata_Source", "Metadata_Plate"]].drop_duplicates()
+        source_map = source_map.set_index("Metadata_Plate").Metadata_Source
+        stats["Metadata_Source"] = stats["Metadata_Plate"].map(source_map)
     parts = stats["feature"].str.split("_", expand=True)
     stats["compartment"] = parts[0].astype("category")
 
