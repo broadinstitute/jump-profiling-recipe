@@ -4,7 +4,7 @@ rule average_precision_negcon:
     output:
         "outputs/{prefix}/metrics/{pipeline}_ap_negcon.parquet",
     params:
-        plate_types=config["plate_types"],
+        plate_types=config.get("plate_types", None),
     run:
         pp.metrics.average_precision_negcon(*input, *output, **params)
 
@@ -15,7 +15,7 @@ rule average_precision_nonrep:
     output:
         "outputs/{prefix}/metrics/{pipeline}_ap_nonrep.parquet",
     params:
-        plate_types=config["plate_types"],
+        plate_types=config.get("plate_types", None),
     run:
         pp.metrics.average_precision_nonrep(*input, *output, **params)
 
