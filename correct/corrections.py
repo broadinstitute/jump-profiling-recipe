@@ -1,14 +1,8 @@
 """Functions to perform well position correction, chromosome arm correction, and PCA"""
 
-from concurrent import futures
-
-# from multiprocessing import get_context
-from tqdm.contrib.concurrent import thread_map
-
 import sys
 
 sys.path.append("..")
-from preprocessing.stats import remove_nan_infs_columns
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
