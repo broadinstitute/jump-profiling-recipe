@@ -2,8 +2,10 @@
 Returns list of features such that no two features have a correlation greater than a
 specified threshold
 """
+
 import numpy as np
 import pandas as pd
+
 
 def get_pairwise_correlation(population_df, method="pearson"):
     """Given a population dataframe, calculate all pairwise correlations.
@@ -46,6 +48,7 @@ def get_pairwise_correlation(population_df, method="pearson"):
 
     return data_cor_df, pairwise_df
 
+
 def correlation_threshold(
     population_df, features="infer", samples="all", threshold=0.9, method="pearson"
 ):
@@ -71,7 +74,6 @@ def correlation_threshold(
     excluded_features : list of str
          List of features to exclude from the population_df.
     """
-
 
     assert 0 <= threshold <= 1, "threshold variable must be between (0 and 1)"
 
