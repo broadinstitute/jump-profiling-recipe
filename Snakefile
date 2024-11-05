@@ -2,6 +2,9 @@ wildcard_constraints:
     pipeline=r"[_a-zA-Z.~0-9\-]*",
     scenario=r"[_a-zA-Z.~0-9\-]*",
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 import correct
 import preprocessing as pp
@@ -14,7 +17,8 @@ include: "rules/map.smk"
 rule all:
     input:
         f"outputs/{config['scenario']}/reformat.done",
-
+        ap_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_ap_nonrep.parquet",
+        map_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_map_nonrep.parquet",
 
 rule reformat:
     input:
@@ -23,19 +27,30 @@ rule reformat:
         touch("outputs/{scenario}/reformat.done"),
     params:
         profile_dir=lambda w: f"outputs/{w.scenario}/",
+        meta_col_new=config.get("meta_col_new", None),
     run:
-        correct.format_check.run_format_check(params.profile_dir)
+        if "meta_col_new" in config:
+            correct.format_check.run_format_check(params.profile_dir, params.meta_col_new)
+        else:
+            correct.format_check.run_format_check(params.profile_dir)
 
 
 rule write_parquet:
+    params:
+        sources=config.get("sources", None),
+        plate_types=config.get("plate_types", None),
+        existing_profile_file=config.get("existing_profile_file", None),
     output:
         "outputs/{scenario}/profiles.parquet",
     run:
-        pp.io.write_parquet(
-            config["sources"],
-            config["plate_types"],
-            *output,
-        )
+        if "existing_profile_file" in config:
+            shell("mkdir -p $(dirname {output}) && cp {input} {output}".format(input=params.existing_profile_file, output=output))
+        else:
+            pp.io.write_parquet(
+                params.sources,
+                params.plate_types,
+                *output
+            )
 
 
 rule compute_norm_stats:
