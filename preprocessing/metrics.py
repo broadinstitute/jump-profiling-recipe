@@ -8,8 +8,9 @@ from preprocessing.metadata import NEGCON_CODES
 def _index(meta, plate_types, ignore_codes=None, include_codes=None):
     """Select samples to be used in mAP computation"""
     # if nothing is specified, use all samples
-    if plate_types is None and ignore_codes is None:
+    if plate_types is None:
         return np.ones(len(meta), dtype=bool)
+
     index = meta["Metadata_PlateType"].isin(plate_types)
     index &= meta["Metadata_pert_type"] != "poscon"
     valid_cmpd = meta.loc[index, "Metadata_JCP2022"].value_counts()
