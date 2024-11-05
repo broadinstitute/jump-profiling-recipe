@@ -1,0 +1,57 @@
+{
+    "scenario": "ncp",
+    "pipeline": "profiles_var_mad_int_featselect",
+    "keep_image_features": true,
+    "use_mad_negcon": false,
+    "existing_profile_file": "inputs/workspace/profiles/ncp/profiles.parquet",
+    "sources": [],
+    "batch_key": "",
+    "label_key": "",
+    "column_norm": "",
+    "meta_col_new": [
+        "Metadata_Plate",
+        "Metadata_Well",
+        "Metadata_Plate_Map_Name",
+        "Metadata_cell_type",
+        "Metadata_line_ID",
+        "Metadata_line_condition",
+        "Metadata_line_source",
+        "Metadata_plating_density",
+        "Metadata_Object_Count",
+        "Metadata_Object_Count_inferred",
+        "Metadata_Site_Count"
+    ],
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 25,
+    "ap_params": {
+        "pos_sameby": [
+            "Metadata_cell_type",
+            "Metadata_line_ID",
+            "Metadata_line_condition",
+            "Metadata_line_source",
+            "Metadata_Plate",
+            "Metadata_Plate_Map_Name"
+        ],
+        "pos_diffby": [],
+        "neg_sameby": [
+            "Metadata_Plate"
+        ],
+        "neg_diffby": [
+            "Metadata_line_ID"
+        ],
+        "batch_size": 20000
+    },
+    "map_params": {
+        "sameby": [
+            "Metadata_cell_type",
+            "Metadata_line_ID",
+            "Metadata_line_condition",
+            "Metadata_line_source",
+            "Metadata_Plate",
+            "Metadata_Plate_Map_Name"
+        ],
+        "threshold": 0.05,
+        "null_size": 100000,
+        "seed": 0
+    }
+}
