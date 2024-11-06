@@ -15,5 +15,7 @@ dependencies:
   - jq=1.7.1
   - patsy=0.5.6
   - statsmodels=0.14.2
+  - conda-forge::pre-commit>=4.0.1
+  - conda-forge::ruff>=0.7.2
   - pip:
       - git+https://github.com/cytomining/copairs.git@v0.4.1
