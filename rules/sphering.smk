@@ -8,7 +8,7 @@ rule sphering_explore:
         "outputs/{scenario}/sphering/exploration/{pipeline}_reg~{reg}.parquet",
         "outputs/{scenario}/sphering/exploration/{pipeline}_reg~{reg}.npz",
     params:
-        method=config["sphering_method"],
+        method=config.get("sphering_method", None),
         reg=lambda wc: float(wc.reg),
     run:
         pp.sphering.sphering(*input, *params, *output)
