@@ -11,7 +11,7 @@ from .metadata import (
     find_feat_cols,
     find_meta_cols,
     POSCON_CODES,
-    NEGCON_CODES
+    NEGCON_CODES,
 )
 
 # logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.DEBUG)

@@ -1,17 +1,22 @@
-'''Casting column types and standardize column names in profiles for public release'''
+"""Casting column types and standardize column names in profiles for public release"""
+
 import os
 import pandas as pd
 import numpy as np
 from preprocessing import io
 
-def merge_parquet(meta: pd.DataFrame, vals: np.ndarray, features:list[str]) -> pd.DataFrame:
+
+def merge_parquet(
+    meta: pd.DataFrame, vals: np.ndarray, features: list[str]
+) -> pd.DataFrame:
     """Save the data in a parquet file resetting the index"""
     dframe = pd.DataFrame(vals, columns=features)
     for c in meta:
         dframe[c] = meta[c].reset_index(drop=True)
     meta_col = list(meta.columns)
-    dframe = dframe[meta_col+features]
+    dframe = dframe[meta_col + features]
     return dframe
+
 
 def restrict_column_type(input_path: str, meta_col_new=None) -> pd.DataFrame:
     """
@@ -19,7 +24,12 @@ def restrict_column_type(input_path: str, meta_col_new=None) -> pd.DataFrame:
     """
     meta, feat_val, feat_col = io.split_parquet(input_path)
     if meta_col_new is None:
-        meta_col_new = ['Metadata_Source', 'Metadata_Plate', 'Metadata_Well', 'Metadata_JCP2022']
+        meta_col_new = [
+            "Metadata_Source",
+            "Metadata_Plate",
+            "Metadata_Well",
+            "Metadata_JCP2022",
+        ]
     meta = meta[meta_col_new]
     for c in meta:
         meta[c] = meta[c].astype("string")
@@ -49,7 +59,7 @@ def run_format_check(profile_dir: str):
     output_dir = (
         "outputs/" + profile_dir.split("/")[1] + "_public/"
     )  # Save new profiles to new folder "{scenario}_public/"
-   
+
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
 

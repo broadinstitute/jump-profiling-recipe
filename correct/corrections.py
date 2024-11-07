@@ -1,11 +1,8 @@
 """Functions to perform well position correction, chromosome arm correction, and PCA"""
-from concurrent import futures
-# from multiprocessing import get_context
-from tqdm.contrib.concurrent import thread_map
 
 import sys
-sys.path.append('..')
-from preprocessing.stats import remove_nan_infs_columns
+
+sys.path.append("..")
 from sklearn.decomposition import PCA
 import pandas as pd
 import numpy as np
@@ -15,6 +12,7 @@ from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
+
 
 def get_meta_cols(df):
     """return a list of metadata columns"""
@@ -31,11 +29,14 @@ def drop_na_feature_rows(ann_dframe: pd.DataFrame) -> pd.DataFrame:
     Drop rows with NA values in non-feature columns.
     """
     org_shape = ann_dframe.shape[0]
-    ann_dframe_clean = ann_dframe[~ann_dframe.filter(regex="^(?!Metadata_)").isnull().T.any()]
+    ann_dframe_clean = ann_dframe[
+        ~ann_dframe.filter(regex="^(?!Metadata_)").isnull().T.any()
+    ]
     ann_dframe_clean.reset_index(drop=True, inplace=True)
-    if (org_shape - ann_dframe_clean.shape[0] < 100):
+    if org_shape - ann_dframe_clean.shape[0] < 100:
         return ann_dframe_clean
     return ann_dframe
+
 
 def subtract_well_mean(input_path: str, output_path: str):
     """
@@ -45,7 +46,7 @@ def subtract_well_mean(input_path: str, output_path: str):
     df = drop_na_feature_rows(df)
 
     feature_cols = df.filter(regex="^(?!Metadata_)").columns
-    mean_ = df.groupby('Metadata_Well')[feature_cols].transform('mean').values
+    mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
     df[feature_cols] = df[feature_cols].values - mean_
     df.to_parquet(output_path, index=False)
 
@@ -214,22 +215,31 @@ def arm_correction(
     df = pd.concat([df, df_crispr])
     df.to_parquet(output_path, index=False)
 
+
 def merge_cell_counts(df: pd.DataFrame, cc_path):
-    df_cc = pd.read_csv(cc_path, low_memory=False,
-                        dtype={"Metadata_Plate": str,
-                               "Metadata_Well": str,
-                               "Metadata_Count_Cells": int})
+    df_cc = pd.read_csv(
+        cc_path,
+        low_memory=False,
+        dtype={
+            "Metadata_Plate": str,
+            "Metadata_Well": str,
+            "Metadata_Count_Cells": int,
+        },
+    )
     df_cc.rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"}, inplace=True)
-    df = df.merge(df_cc[['Metadata_Well', 'Metadata_Plate', 'Cells_Count_Count']],
-                  on=['Metadata_Well', 'Metadata_Plate'],
-                  how='left').reset_index(drop=True)
+    df = df.merge(
+        df_cc[["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"]],
+        on=["Metadata_Well", "Metadata_Plate"],
+        how="left",
+    ).reset_index(drop=True)
     return df
+
 
 def regress_out_cell_counts_parallel(
     input_path: str,
     output_path: str,
     cc_path: str,
-    cc_col: str = 'Cells_Count_Count',
+    cc_col: str = "Cells_Count_Count",
     min_unique: int = 100,
     inplace: bool = True,
 ) -> pd.DataFrame:
@@ -262,10 +272,12 @@ def regress_out_cell_counts_parallel(
     feature_cols = [
         feature for feature in feature_cols if df[feature].nunique() > min_unique
     ]
-          
-    print(f'Number of features to regress: {len(feature_cols)}')
+
+    print(f"Number of features to regress: {len(feature_cols)}")
     resid = np.empty((len(df), len(feature_cols)), dtype=np.float32)
-    for i, feature in tqdm(enumerate(feature_cols), leave=False, total=len(feature_cols)):
+    for i, feature in tqdm(
+        enumerate(feature_cols), leave=False, total=len(feature_cols)
+    ):
         model = ols(f"{feature} ~ {cc_col}", data=df).fit()
         resid[model.resid.index, i] = model.resid.values
     print("masking nans")

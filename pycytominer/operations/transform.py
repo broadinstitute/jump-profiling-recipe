@@ -51,7 +51,8 @@ class Spherize(BaseEstimator, TransformerMixin):
 
         if method not in avail_methods:
             raise ValueError(
-                f"Error {method} not supported. Select one of {avail_methods}")
+                f"Error {method} not supported. Select one of {avail_methods}"
+            )
         self.method = method
 
         # PCA-cor and ZCA-cor require center=True
@@ -87,8 +88,9 @@ class Spherize(BaseEstimator, TransformerMixin):
             X = self.standard_scaler.transform(X)
         else:
             if self.center:
-                self.mean_centerer = StandardScaler(with_mean=True,
-                                                    with_std=False).fit(X)
+                self.mean_centerer = StandardScaler(with_mean=True, with_std=False).fit(
+                    X
+                )
                 X = self.mean_centerer.transform(X)
 
         # Get the number of observations and variables
@@ -99,11 +101,11 @@ class Spherize(BaseEstimator, TransformerMixin):
 
         # If n < d, then rank should be equal to n - 1 (if centered) or n (if not centered)
         # If n >= d, then rank should be equal to d
-        if not ((r == d) | (self.center & (r == n - 1)) | (not self.center &
-                                                           (r == n))):
+        if not ((r == d) | (self.center & (r == n - 1)) | (not self.center & (r == n))):
             raise ValueError(
                 "Sphering is not supported when the data matrix X is not full rank."
-                "Check for linear dependencies in the data and remove them.")
+                "Check for linear dependencies in the data and remove them."
+            )
 
         # Get the eigenvalues and eigenvectors of the covariance matrix using SVD
         _, Sigma, Vt = np.linalg.svd(X, full_matrices=True)
@@ -123,8 +125,7 @@ class Spherize(BaseEstimator, TransformerMixin):
                 )
                 raise ValueError(error_msg)
 
-            Sigma = np.concatenate((Sigma[0:r], np.repeat(Sigma[r - 1],
-                                                          d - r)))
+            Sigma = np.concatenate((Sigma[0:r], np.repeat(Sigma[r - 1], d - r)))
 
         Sigma = Sigma + self.epsilon
 

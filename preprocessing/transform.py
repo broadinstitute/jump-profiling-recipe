@@ -5,17 +5,16 @@ from tqdm.contrib.concurrent import thread_map
 from preprocessing.io import merge_parquet, split_parquet
 
 
-def rank_int_array(array: np.ndarray,
-                   c: float = 3.0 / 8,
-                   stochastic: bool = True,
-                   seed: int = 0):
-    '''
+def rank_int_array(
+    array: np.ndarray, c: float = 3.0 / 8, stochastic: bool = True, seed: int = 0
+):
+    """
     Perform rank-based inverse normal transformation in a 1d numpy array. If
     stochastic is True ties are given rank randomly, otherwise ties will share
     the same value.
 
     Adapted from: https://github.com/edm1/rank-based-INT/blob/85cb37bb8e0d9e71bb9e8f801fd7369995b8aee7/rank_based_inverse_normal_transformation.py
-    '''
+    """
     rng = np.random.default_rng(seed=seed)
 
     if stochastic:
