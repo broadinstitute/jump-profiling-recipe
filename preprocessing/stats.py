@@ -1,3 +1,12 @@
+"""
+Functions for computing statistics
+
+File Structure:
+- Feature & Statistics Operations: Functions for computing descriptive statistics and plate-wise statistics
+- Feature Selection & Filtering: Functions for removing NaN/Inf features and selecting variant features
+- Metadata Operations: Functions for augmenting stats DataFrame with metadata columns
+"""
+
 from functools import partial
 from itertools import chain
 import logging
@@ -6,17 +15,37 @@ import numpy as np
 import pandas as pd
 from scipy.stats import median_abs_deviation
 from tqdm.contrib.concurrent import thread_map
-from preprocessing.io import merge_parquet
-
+from preprocessing.io import merge_parquet, _validate_columns
 from .metadata import find_feat_cols, find_meta_cols, NEGCON_CODES
 
-# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.WARN)
+
+# ------------------------------
+# DataFrame Feature & Statistics Operations
+# ------------------------------
 
 
-def get_feat_stats(dframe: pd.DataFrame, features=None):
-    """Get statistics per each feature"""
+def get_feat_stats(
+    dframe: pd.DataFrame, features: list[str] | None = None
+) -> pd.DataFrame:
+    """
+    Calculate descriptive statistics (e.g. mean, std, min, max, quartiles, and IQR) for each feature
+    column in a DataFrame.
+
+    Parameters
+    ----------
+    dframe : pd.DataFrame
+        The input DataFrame containing feature columns and possibly metadata columns.
+    features : list of str, optional
+        The names of the feature columns for which to compute statistics.
+        If None, automatically determine feature columns using `find_feat_cols`.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing descriptive statistics for each specified feature, including an
+        additional "iqr" column.
+    """
     if features is None:
         features = find_feat_cols(dframe)
     desc = thread_map(lambda x: dframe[x].describe(), features, leave=False)
@@ -25,7 +54,24 @@ def get_feat_stats(dframe: pd.DataFrame, features=None):
     return desc
 
 
-def get_plate_stats(dframe: pd.DataFrame):
+def get_plate_stats(dframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute plate-wise statistics (median, median absolute deviation, min, max, and count)
+    for features in a DataFrame grouped by the "Metadata_Plate" column.
+
+    Parameters
+    ----------
+    dframe : pd.DataFrame
+        The input DataFrame containing feature columns and a "Metadata_Plate" column.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame of plate-wise statistics in a long-to-wide pivoted format, including
+        an additional "abs_coef_var" column (absolute coefficient of variation).
+    """
+    _validate_columns(dframe, ["Metadata_Plate"])
+
     mad_fn = partial(median_abs_deviation, nan_policy="omit", axis=0)
     # scale param reproduces pycytominer output. Differences in mAP for
     # Target 2 in scenario 2 are negligible.
@@ -70,31 +116,52 @@ def get_plate_stats(dframe: pd.DataFrame):
     return stats
 
 
-def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame):
-    source_map = meta[["Metadata_Source", "Metadata_Plate"]].drop_duplicates()
-    source_map = source_map.set_index("Metadata_Plate").Metadata_Source
-    stats["Metadata_Source"] = stats["Metadata_Plate"].map(source_map)
-    parts = stats["feature"].str.split("_", expand=True)
-    stats["compartment"] = parts[0].astype("category")
+def compute_stats(parquet_path: str, stats_path: str) -> None:
+    """
+    Load a parquet file, compute per-feature descriptive statistics, and save them to another
+    parquet file.
+
+    Parameters
+    ----------
+    parquet_path : str
+        The file path to the input parquet data.
+    stats_path : str
+        The file path where the resulting stats parquet file will be saved.
+
+    Returns
+    -------
+    None
+        Writes the per-feature stats DataFrame to the specified parquet file.
+    """
+    dframe = pd.read_parquet(parquet_path)
+    fea_stats = get_feat_stats(dframe)
+    fea_stats.to_parquet(stats_path)
 
 
-# stats['family'] = parts[range(3)].apply('_'.join, axis=1).astype('category')
+def compute_norm_stats(parquet_path: str, df_stats_path: str, use_negcon: bool) -> None:
+    """
+    Load a parquet file, remove columns containing NaN or infinite values, and compute plate-wise
+    statistics for either negative control rows or all rows.
 
+    Parameters
+    ----------
+    parquet_path : str
+        The file path to the input parquet data.
+    df_stats_path : str
+        The file path where the resulting stats parquet file will be saved.
+    use_negcon : bool
+        If True, compute stats only on rows whose "Metadata_JCP2022" value is in NEGCON_CODES.
+        Otherwise, compute stats on all rows.
 
-def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
-    feat_cols = find_feat_cols(dframe)
-    withnan = dframe[feat_cols].isna().sum()[lambda x: x > 0]
-    withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
-    withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
-    redlist = set(chain(withinf.index, withnan.index, withninf.index))
-    logger.warning(f"Dropping {len(redlist)} NaN/INF features.")
-    return dframe[[c for c in dframe.columns if c not in redlist]]
-
-
-def compute_norm_stats(parquet_path, df_stats_path, use_negcon):
-    """create platewise statistics for columns without nan/inf values only"""
+    Returns
+    -------
+    None
+        Writes the computed plate-wise stats DataFrame to the specified parquet file.
+    """
     logger.info("Loading data")
     dframe = pd.read_parquet(parquet_path)
+    if use_negcon:
+        _validate_columns(dframe, ["Metadata_JCP2022"])
     logger.info("Removing nan and inf columns")
     dframe = remove_nan_infs_columns(dframe)
     if use_negcon:
@@ -109,10 +176,55 @@ def compute_norm_stats(parquet_path, df_stats_path, use_negcon):
     dframe_stats.to_parquet(df_stats_path)
 
 
-def select_variant_features(parquet_path, norm_stats_path, variant_feats_path):
+# ------------------------------
+# Feature Selection & Filtering
+# ------------------------------
+
+
+def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
     """
-    Filtered out features that have mad == 0 or abs_coef_var>1e-3 in any plate.
-    stats are computed using negative controls only
+    Remove columns that contain NaN or infinite values from a DataFrame.
+
+    Parameters
+    ----------
+    dframe : pd.DataFrame
+        The input DataFrame in which columns containing NaN or infinite values will be dropped.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame excluding all columns that contained NaN or infinite values.
+    """
+    feat_cols = find_feat_cols(dframe)
+    withnan = dframe[feat_cols].isna().sum()[lambda x: x > 0]
+    withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
+    withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
+    redlist = set(chain(withinf.index, withnan.index, withninf.index))
+    logger.warning(f"Dropping {len(redlist)} NaN/INF features.")
+    return dframe[[c for c in dframe.columns if c not in redlist]]
+
+
+def select_variant_features(
+    parquet_path: str, norm_stats_path: str, variant_feats_path: str
+) -> None:
+    """
+    Filter out features that have zero MAD or an absolute coefficient of variation below 1e-3
+    in any plate. Only keeps plates containing these "variant" features.
+
+    Parameters
+    ----------
+    parquet_path : str
+        The file path to the input parquet data.
+    norm_stats_path : str
+        The file path to the stats parquet file used for filtering (computed typically on negative controls).
+    variant_feats_path : str
+        The output parquet path of the DataFrame containing only variant features.
+
+    Returns
+    -------
+    None
+        Writes the filtered DataFrame to the specified parquet path, containing only
+        variant features across all relevant plates.
     """
     dframe = pd.read_parquet(parquet_path)
     norm_stats = pd.read_parquet(norm_stats_path)
@@ -136,7 +248,39 @@ def select_variant_features(parquet_path, norm_stats_path, variant_feats_path):
     merge_parquet(meta, vals, variant_features, variant_feats_path)
 
 
-def compute_stats(parquet_path, stats_path):
-    dframe = pd.read_parquet(parquet_path)
-    fea_stats = get_feat_stats(dframe)
-    fea_stats.to_parquet(stats_path)
+# ------------------------------
+# Metadata Operations
+# ------------------------------
+
+
+def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame) -> None:
+    """
+    Augment the stats DataFrame with metadata columns by
+    - Mapping the source of each plate from the meta DataFrame.
+    - Extracting compartment information from feature column names.
+
+    Parameters
+    ----------
+    stats : pd.DataFrame
+        The stats DataFrame produced by get_plate_stats or similar functions,
+        containing "Metadata_Plate" and "feature" columns.
+    meta : pd.DataFrame
+        A DataFrame containing metadata columns, including "Metadata_Source" and
+        "Metadata_Plate".
+
+    Returns
+    -------
+    None
+        This function modifies the stats DataFrame in place by adding new columns.
+    """
+    _validate_columns(stats, ["Metadata_Plate", "feature"])
+    _validate_columns(meta, ["Metadata_Source", "Metadata_Plate"])
+
+    source_map = meta[["Metadata_Source", "Metadata_Plate"]].drop_duplicates()
+    source_map = source_map.set_index("Metadata_Plate").Metadata_Source
+    stats["Metadata_Source"] = stats["Metadata_Plate"].map(source_map)
+    parts = stats["feature"].str.split("_", expand=True)
+    stats["compartment"] = parts[0].astype("category")
+
+
+# stats['family'] = parts[range(3)].apply('_'.join, axis=1).astype('category')
