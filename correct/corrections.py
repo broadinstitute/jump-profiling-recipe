@@ -539,7 +539,7 @@ def regress_out_cell_counts_parallel(
     df = ann_df if inplace else ann_df.copy()
     df = merge_cell_counts(df, cc_path)
 
-    feature_cols = get_feature_columns(df).to_list()
+    feature_cols = get_feature_columns(df)
     feature_cols.remove(cc_col)
     feature_cols = [
         feature for feature in feature_cols if df[feature].nunique() > min_unique
