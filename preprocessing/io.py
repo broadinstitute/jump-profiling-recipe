@@ -293,8 +293,9 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     def read_parquet(params):
         path, start, end = params
         df = pd.read_parquet(path)
-        meta[start:end] = df[meta_cols].values
-        feats[start:end] = df[feat_cols].values
+
+        meta[int(start):int(end)] = df[meta_cols].values
+        feats[int(start):int(end)] = df[feat_cols].values
 
     params = np.concatenate([paths[:, None], slices], axis=1)
     thread_map(read_parquet, params)
@@ -328,14 +329,6 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
     """
     dframe = load_data(sources, plate_types)
 
-    required_cols = [
-        "Metadata_Source",
-        "Metadata_Plate",
-        "Metadata_Well",
-        "Metadata_JCP2022",
-    ]
-    validate_columns(dframe, required_cols)
-
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]
     dframe.drop(image_col, axis=1, inplace=True)
@@ -345,6 +338,14 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
     add_pert_type(meta)
     add_row_col(meta)
     add_microscopy_info(meta)
+
+    required_cols = [
+        "Metadata_Source",
+        "Metadata_Plate",
+        "Metadata_Well",
+    ]
+    validate_columns(dframe, required_cols)
+
     foreign_key = ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]
     meta = dframe[foreign_key].merge(meta, on=foreign_key, how="left")
 
