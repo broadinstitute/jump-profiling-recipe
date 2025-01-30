@@ -1,4 +1,12 @@
-"""Functions to perform well position correction, chromosome arm correction, and PCA"""
+"""Functions for data preprocessing, annotation, and correction.
+
+File Structure:
+- DataFrame Column Operations: Utilities for handling metadata and feature columns
+- NA Value Handling: Functions for cleaning and handling missing values
+- Data Annotation: Gene and chromosome annotation functions
+- Data Transformation & Correction: Well position, PCA, and arm correction methods
+- Cell Count Operations: Cell count regression and related utilities
+"""
 
 import sys
 
@@ -12,6 +20,11 @@ from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
+
+
+# ------------------------------
+# DataFrame Column Operations
+# ------------------------------
 
 
 def get_meta_cols(df):
@@ -46,86 +59,6 @@ def get_feature_cols(df):
     return df.filter(regex="^(?!Metadata_)").columns
 
 
-def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
-    """Drop rows containing NA values in feature columns.
-
-    Parameters
-    ----------
-    ann_dframe : pandas.DataFrame
-        Input dataframe to process
-
-    Returns
-    -------
-    pandas.DataFrame
-        If fewer than 100 rows would be dropped:
-            Returns cleaned dataframe with rows containing NA values in feature columns removed
-        Otherwise:
-            Returns original dataframe unchanged
-    """
-    org_shape = ann_dframe.shape[0]
-    ann_dframe_clean = ann_dframe[
-        ~ann_dframe[get_feature_cols(ann_dframe)].isnull().T.any()
-    ]
-    ann_dframe_clean.reset_index(drop=True, inplace=True)
-    if org_shape - ann_dframe_clean.shape[0] < 100:
-        return ann_dframe_clean
-    return ann_dframe
-
-
-def subtract_well_mean(input_path: str, output_path: str):
-    """Subtract the mean of each feature per each well.
-
-    Parameters
-    ----------
-    input_path : str
-        Path to input parquet file containing the dataframe
-    output_path : str
-        Path where the processed dataframe will be saved as parquet
-
-    Returns
-    -------
-    None
-        Saves processed dataframe to output_path
-    """
-    df = pd.read_parquet(input_path)
-    df = drop_rows_with_na_features(df)
-
-    feature_cols = get_feature_cols(df)
-    mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
-    df[feature_cols] = df[feature_cols].values - mean_
-    df.to_parquet(output_path, index=False)
-
-
-def transform_data(input_path: str, output_path: str, variance=0.98):
-    """Transform data by applying PCA.
-
-    Parameters
-    ----------
-    input_path : str
-        Path to input dataframe
-    output_path : str
-        Path to output dataframe
-    variance : float, optional
-        Variance to keep after PCA, by default 0.98
-
-    Returns
-    -------
-    None
-        Saves transformed dataframe to output_path with PCA-transformed features
-        and original metadata columns
-    """
-    df = pd.read_parquet(input_path)
-
-    metadata = df[get_meta_cols(df)]
-    features = df[get_feature_cols(df)]
-
-    features = pd.DataFrame(PCA(variance).fit_transform(features))
-
-    df_new = pd.concat([metadata, features], axis=1)
-    df_new.columns = df_new.columns.astype(str)
-    df_new.to_parquet(output_path, index=False)
-
-
 def get_metadata(df):
     """Get metadata columns subset from dataframe.
 
@@ -158,6 +91,37 @@ def get_featuredata(df):
     return df[get_feature_cols(df)]
 
 
+# ------------------------------
+# NA Value Handling
+# ------------------------------
+
+
+def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
+    """Drop rows containing NA values in feature columns.
+
+    Parameters
+    ----------
+    ann_dframe : pandas.DataFrame
+        Input dataframe to process
+
+    Returns
+    -------
+    pandas.DataFrame
+        If fewer than 100 rows would be dropped:
+            Returns cleaned dataframe with rows containing NA values in feature columns removed
+        Otherwise:
+            Returns original dataframe unchanged
+    """
+    org_shape = ann_dframe.shape[0]
+    ann_dframe_clean = ann_dframe[
+        ~ann_dframe[get_feature_cols(ann_dframe)].isnull().T.any()
+    ]
+    ann_dframe_clean.reset_index(drop=True, inplace=True)
+    if org_shape - ann_dframe_clean.shape[0] < 100:
+        return ann_dframe_clean
+    return ann_dframe
+
+
 def drop_features_with_na(df):
     """Remove features containing NaN values.
 
@@ -177,6 +141,11 @@ def drop_features_with_na(df):
     ]
     logger.info(f"Removing {len(features_to_remove)} features containing NaN values")
     return df.drop(features_to_remove, axis=1)
+
+
+# ------------------------------
+# Data Annotation
+# ------------------------------
 
 
 def annotate_gene(df, df_meta):
@@ -290,6 +259,65 @@ def annotate_dataframe(
     df.to_parquet(output_path)
 
 
+# ------------------------------
+# Data Transformation & Correction
+# ------------------------------
+
+
+def subtract_well_mean(input_path: str, output_path: str):
+    """Subtract the mean of each feature per each well.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input parquet file containing the dataframe
+    output_path : str
+        Path where the processed dataframe will be saved as parquet
+
+    Returns
+    -------
+    None
+        Saves processed dataframe to output_path
+    """
+    df = pd.read_parquet(input_path)
+    df = drop_rows_with_na_features(df)
+
+    feature_cols = get_feature_cols(df)
+    mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
+    df[feature_cols] = df[feature_cols].values - mean_
+    df.to_parquet(output_path, index=False)
+
+
+def transform_data(input_path: str, output_path: str, variance=0.98):
+    """Transform data by applying PCA.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input dataframe
+    output_path : str
+        Path to output dataframe
+    variance : float, optional
+        Variance to keep after PCA, by default 0.98
+
+    Returns
+    -------
+    None
+        Saves transformed dataframe to output_path with PCA-transformed features
+        and original metadata columns
+    """
+    df = pd.read_parquet(input_path)
+
+    metadata = df[get_meta_cols(df)]
+    features = df[get_feature_cols(df)]
+
+    features = pd.DataFrame(PCA(variance).fit_transform(features))
+
+    df_new = pd.concat([metadata, features], axis=1)
+    df_new.columns = df_new.columns.astype(str)
+    df_new.to_parquet(output_path, index=False)
+
+
 def arm_correction(
     crispr_profile_path: str, output_path: str, gene_expression_file: str
 ):
@@ -364,6 +392,11 @@ def arm_correction(
 
     df = pd.concat([df, df_crispr])
     df.to_parquet(output_path, index=False)
+
+
+# ------------------------------
+# Cell Count Operations
+# ------------------------------
 
 
 def merge_cell_counts(df, cc_path):
