@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------
 
 
-def get_meta_cols(df):
+def get_meta_cols(df: pd.DataFrame) -> pd.Index:
     """Get metadata columns from dataframe.
 
     Parameters
@@ -43,7 +43,7 @@ def get_meta_cols(df):
     return df.filter(regex="^(Metadata_)").columns
 
 
-def get_feature_cols(df):
+def get_feature_cols(df: pd.DataFrame) -> pd.Index:
     """Get feature columns from dataframe.
 
     Parameters
@@ -59,7 +59,7 @@ def get_feature_cols(df):
     return df.filter(regex="^(?!Metadata_)").columns
 
 
-def get_metadata(df):
+def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
     """Get metadata columns subset from dataframe.
 
     Parameters
@@ -75,7 +75,7 @@ def get_metadata(df):
     return df[get_meta_cols(df)]
 
 
-def get_featuredata(df):
+def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
     """Get feature columns subset from dataframe.
 
     Parameters
@@ -122,7 +122,7 @@ def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
     return ann_dframe
 
 
-def drop_features_with_na(df):
+def drop_features_with_na(df: pd.DataFrame) -> pd.DataFrame:
     """Remove features containing NaN values.
 
     Parameters
@@ -148,7 +148,7 @@ def drop_features_with_na(df):
 # ------------------------------
 
 
-def annotate_gene(df, df_meta):
+def annotate_gene(df: pd.DataFrame, df_meta: pd.DataFrame) -> pd.DataFrame:
     """Annotate dataframe with gene symbols.
 
     Parameters
@@ -203,7 +203,7 @@ def annotate_gene(df, df_meta):
     return df
 
 
-def annotate_chromosome(df, df_meta):
+def annotate_chromosome(df: pd.DataFrame, df_meta: pd.DataFrame) -> pd.DataFrame:
     """Annotate dataframe with chromosome location information.
 
     Merges chromosome location data and adds/modifies columns:
@@ -311,8 +311,8 @@ def annotate_dataframe(
     output_path: str,
     df_gene_path: str,
     df_chrom_path: str,
-):
-    """Annotate dataframe with gene and chromosome information.
+) -> None:
+    """Annotate dataframe with gene and chromosome information and save to file.
 
     Parameters
     ----------
@@ -349,7 +349,7 @@ def annotate_dataframe(
 # ------------------------------
 
 
-def subtract_well_mean(input_path: str, output_path: str):
+def subtract_well_mean(input_path: str, output_path: str) -> None:
     """Subtract the mean of each feature per each well.
 
     Parameters
@@ -374,7 +374,7 @@ def subtract_well_mean(input_path: str, output_path: str):
     df.to_parquet(output_path, index=False)
 
 
-def transform_data(input_path: str, output_path: str, variance=0.98):
+def transform_data(input_path: str, output_path: str, variance: float = 0.98) -> None:
     """Transform data by applying PCA.
 
     Parameters
@@ -406,7 +406,7 @@ def transform_data(input_path: str, output_path: str, variance=0.98):
 
 def arm_correction(
     crispr_profile_path: str, output_path: str, gene_expression_file: str
-):
+) -> None:
     """Perform chromosome arm correction on CRISPR profiles.
 
     This function corrects for chromosome arm effects by:
@@ -489,7 +489,7 @@ def arm_correction(
 # ------------------------------
 
 
-def merge_cell_counts(df, cc_path):
+def merge_cell_counts(df: pd.DataFrame, cc_path: str) -> pd.DataFrame:
     """Merge cell count data with input dataframe.
 
     Parameters
@@ -554,26 +554,30 @@ def regress_out_cell_counts_parallel(
     cc_col: str = "Cells_Count_Count",
     min_unique: int = 100,
     inplace: bool = True,
-) -> pd.DataFrame:
-    """
-    Regress out cell counts from all features in a dataframe in parallel.
+) -> None:
+    """Regress out cell counts from all features in a dataframe in parallel.
 
     Parameters
     ----------
-    ann_df : pandas.core.frame.DataFrame
-        DataFrame of annotated profiles.
-    cc_col : str
-        Name of column containing cell counts.
+    input_path : str
+        Path to input parquet file containing profiles
+    output_path : str
+        Path where corrected profiles will be saved
+    cc_path : str
+        Path to cell count CSV file
+    cc_col : str, optional
+        Name of column containing cell counts. This column will be added to the dataframe
+        during the merge with cell count data. Default is "Cells_Count_Count"
     min_unique : int, optional
-        Minimum number of unique feature values to perform regression.
-    cc_rename : str, optional
-        Name to rename cell count column to.
+        Minimum number of unique feature values to perform regression, by default 100
     inplace : bool, optional
-        Whether to perform operation in place.
+        Whether to perform operation in place, by default True
 
     Returns
     -------
-    df : pandas.core.frame.DataFrame
+    None
+        Saves corrected profiles to output_path with cell count effects regressed out
+        from qualifying features (those with > min_unique unique values)
     """
     ann_df = pd.read_parquet(input_path)
     df = ann_df if inplace else ann_df.copy()
