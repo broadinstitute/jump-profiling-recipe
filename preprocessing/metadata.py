@@ -9,9 +9,11 @@ File Structure:
 """
 
 import logging
-from collections.abc import Iterable
 import pandas as pd
+import re
 from preprocessing.io import _validate_columns
+from collections.abc import Iterable
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,42 +67,87 @@ SOURCE3_BATCH_REDLIST = {
 }
 
 # ------------------------------
-# Core Utilities
+# Column Classification
 # ------------------------------
 
-
-def find_feat_cols(cols: Iterable[str]) -> list[str]:
-    """Find column names for features.
-
-    Parameters
-    ----------
-    cols : Iterable[str]
-        Collection of column names to search through.
-
-    Returns
-    -------
-    list[str]
-        List of feature column names (those not starting with 'Meta').
-    """
-    feat_cols = [c for c in cols if not c.startswith("Meta")]
-    return feat_cols
+# Regex patterns for column classification
+METADATA_PATTERN = "^(Metadata_)"
+FEATURE_PATTERN = "^(?!Metadata_)"
 
 
-def find_meta_cols(cols: Iterable[str]) -> list[str]:
-    """Find column names for metadata.
+def get_feature_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.Index:
+    """Get column names for features.
 
     Parameters
     ----------
-    cols : Iterable[str]
-        Collection of column names to search through.
+    cols : Union[Iterable[str], pd.DataFrame]
+        Collection of column names or DataFrame to analyze
 
     Returns
     -------
-    list[str]
-        List of metadata column names (those starting with 'Meta').
+    Union[list[str], pd.Index]
+        Feature column names
+        Returns pd.Index if input is DataFrame, list otherwise
     """
-    meta_cols = [c for c in cols if c.startswith("Meta")]
-    return meta_cols
+    if isinstance(cols, pd.DataFrame):
+        return cols.filter(regex=FEATURE_PATTERN).columns
+    return [c for c in cols if re.match(FEATURE_PATTERN, c)]
+
+
+def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.Index:
+    """Get column names for metadata.
+
+    Parameters
+    ----------
+    cols : Union[Iterable[str], pd.DataFrame]
+        Collection of column names or DataFrame to analyze
+
+    Returns
+    -------
+    Union[list[str], pd.Index]
+        Metadata column names
+        Returns pd.Index if input is DataFrame, list otherwise
+    """
+    if isinstance(cols, pd.DataFrame):
+        return cols.filter(regex=METADATA_PATTERN).columns
+    return [c for c in cols if re.match(METADATA_PATTERN, c)]
+
+
+def get_feature_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Get feature columns subset from dataframe.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe containing only feature columns
+    """
+    return df[get_feature_columns(df)]
+
+
+def get_metadata_data(df: pd.DataFrame) -> pd.DataFrame:
+    """Get metadata columns subset from dataframe.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe containing only metadata columns
+    """
+    return df[get_metadata_columns(df)]
+
+
+# ------------------------------
+# Core Utilities
+# ------------------------------
 
 
 def build_path(row: pd.Series) -> str:
