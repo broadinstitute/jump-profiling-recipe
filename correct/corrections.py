@@ -162,13 +162,43 @@ def annotate_gene(df, df_meta):
     -------
     pandas.DataFrame
         Annotated dataframe with gene symbols
+
+    Raises
+    ------
+    ValueError
+        If required columns are missing in df_meta
+        If merge results in data loss
     """
+    # Check required columns exist in metadata
+    required_cols = ["Metadata_JCP2022", "Metadata_Symbol"]
+    if not all(col in df_meta.columns for col in required_cols):
+        missing = [col for col in required_cols if col not in df_meta.columns]
+        raise ValueError(f"Missing required columns in df_meta: {missing}")
+
     if "Metadata_Symbol" not in df.columns:
+        # Store original row count
+        original_rows = len(df)
+
+        # Perform merge
         df = df.merge(
             df_meta[["Metadata_JCP2022", "Metadata_Symbol"]],
             on="Metadata_JCP2022",
             how="left",
         )
+
+        # Check for data loss
+        if len(df) != original_rows:
+            raise ValueError(
+                f"Merge resulted in row count change: {original_rows} -> {len(df)}"
+            )
+
+        # Check for null values after merge
+        null_count = df["Metadata_Symbol"].isnull().sum()
+        if null_count > 0:
+            logger.warning(
+                f"Merge resulted in {null_count} null values in Metadata_Symbol"
+            )
+
     return df
 
 
