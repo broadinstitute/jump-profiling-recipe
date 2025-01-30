@@ -6,6 +6,8 @@ import numpy as np
 import logging
 from preprocessing import io
 
+logger = logging.getLogger(__name__)
+
 
 def merge_parquet(
     meta: pd.DataFrame, vals: np.ndarray, features: list[str]
@@ -109,11 +111,11 @@ def run_format_check(profile_dir: str):
     - For files containing 'harmony' or 'PCA' in their name, feature columns are
       renamed to X_1, X_2, etc.
     """
-    logging.info(f"Starting profile format check for directory: {profile_dir}")
+    logger.info(f"Starting profile format check for directory: {profile_dir}")
 
     files = os.listdir(profile_dir)
     files = [file for file in files if (".parquet" in file) and ("profiles" in file)]
-    logging.info(f"Found {len(files)} profile files to process")
+    logger.info(f"Found {len(files)} profile files to process")
 
     output_dir = (
         "outputs/" + profile_dir.split("/")[1] + "_public/"
@@ -130,4 +132,4 @@ def run_format_check(profile_dir: str):
             df = standardize_col_names(df)
         df.to_parquet(file_output_path)
 
-    logging.info("Profile format check completed successfully")
+    logger.info("Profile format check completed successfully")
