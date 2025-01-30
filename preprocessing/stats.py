@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import median_abs_deviation
 from tqdm.contrib.concurrent import thread_map
-from preprocessing.io import merge_parquet, _validate_columns
+from .io import merge_parquet, validate_columns
 from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ def get_plate_stats(dframe: pd.DataFrame) -> pd.DataFrame:
         A DataFrame of plate-wise statistics in a long-to-wide pivoted format, including
         an additional "abs_coef_var" column (absolute coefficient of variation).
     """
-    _validate_columns(dframe, ["Metadata_Plate"])
+    validate_columns(dframe, ["Metadata_Plate"])
 
     mad_fn = partial(median_abs_deviation, nan_policy="omit", axis=0)
     # scale param reproduces pycytominer output. Differences in mAP for
@@ -161,7 +161,7 @@ def compute_norm_stats(parquet_path: str, df_stats_path: str, use_negcon: bool) 
     logger.info("Loading data")
     dframe = pd.read_parquet(parquet_path)
     if use_negcon:
-        _validate_columns(dframe, ["Metadata_JCP2022"])
+        validate_columns(dframe, ["Metadata_JCP2022"])
     logger.info("Removing nan and inf columns")
     dframe = remove_nan_infs_columns(dframe)
     if use_negcon:
@@ -273,8 +273,8 @@ def add_metadata(stats: pd.DataFrame, meta: pd.DataFrame) -> None:
     None
         This function modifies the stats DataFrame in place by adding new columns.
     """
-    _validate_columns(stats, ["Metadata_Plate", "feature"])
-    _validate_columns(meta, ["Metadata_Source", "Metadata_Plate"])
+    validate_columns(stats, ["Metadata_Plate", "feature"])
+    validate_columns(meta, ["Metadata_Source", "Metadata_Plate"])
 
     source_map = meta[["Metadata_Source", "Metadata_Plate"]].drop_duplicates()
     source_map = source_map.set_index("Metadata_Plate").Metadata_Source

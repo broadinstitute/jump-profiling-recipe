@@ -11,8 +11,8 @@ import shutil
 import numpy as np
 import pandas as pd
 
-from preprocessing.io import merge_parquet, split_parquet
-from preprocessing.metadata import NEGCON_CODES
+from .io import merge_parquet, split_parquet
+from .metadata import NEGCON_CODES
 from pycytominer.operations import Spherize
 
 

@@ -21,7 +21,7 @@ import numpy as np
 from statsmodels.formula.api import ols
 import logging
 from tqdm.auto import tqdm
-from preprocessing.io import _validate_columns
+from preprocessing.utils import validate_columns as validate_columns
 from preprocessing.metadata import get_feature_columns, get_metadata_columns
 
 logger = logging.getLogger(__name__)
@@ -145,7 +145,7 @@ def annotate_gene(df: pd.DataFrame, df_meta: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info(f"Starting gene annotation for dataframe with {len(df)} rows")
     # Check required columns exist in metadata
-    _validate_columns(df_meta, ["Metadata_JCP2022", "Metadata_Symbol"])
+    validate_columns(df_meta, ["Metadata_JCP2022", "Metadata_Symbol"])
 
     if "Metadata_Symbol" not in df.columns:
         # Store original row count
@@ -203,8 +203,8 @@ def annotate_chromosome(df: pd.DataFrame, df_meta: pd.DataFrame) -> pd.DataFrame
     logger.info(f"Starting chromosome annotation for dataframe with {len(df)} rows")
 
     # Check required columns exist in both dataframes
-    _validate_columns(df, ["Metadata_Symbol"])
-    _validate_columns(df_meta, ["Approved_symbol"])
+    validate_columns(df, ["Metadata_Symbol"])
+    validate_columns(df_meta, ["Approved_symbol"])
 
     def split_arm(locus):
         return (
@@ -471,7 +471,7 @@ def merge_cell_counts(df: pd.DataFrame, cc_path: str) -> pd.DataFrame:
         Merged dataframe with cell count information
     """
     # Validate input dataframe columns
-    _validate_columns(df, ["Metadata_Well", "Metadata_Plate"])
+    validate_columns(df, ["Metadata_Well", "Metadata_Plate"])
 
     df_cc = pd.read_csv(
         cc_path,
@@ -485,7 +485,7 @@ def merge_cell_counts(df: pd.DataFrame, cc_path: str) -> pd.DataFrame:
     df_cc.rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"}, inplace=True)
 
     # Validate cell count dataframe columns
-    _validate_columns(df_cc, ["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"])
+    validate_columns(df_cc, ["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"])
 
     merged_df = df.merge(
         df_cc[["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"]],

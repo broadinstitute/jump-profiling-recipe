@@ -11,7 +11,7 @@ File Structure:
 import logging
 import pandas as pd
 import re
-from preprocessing.io import _validate_columns
+from .utils import validate_columns
 from collections.abc import Iterable
 
 
@@ -164,7 +164,7 @@ def build_path(row: pd.Series) -> str:
     str
         Formatted path string to the parquet file.
     """
-    _validate_columns(row, ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"])
+    validate_columns(row, ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"])
 
     template = (
         "./inputs/{Metadata_Source}/workspace/profiles/"
@@ -252,7 +252,7 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
         "Metadata_PlateType",
         "Metadata_Batch",
     ]
-    _validate_columns(plate_metadata, required_cols)
+    validate_columns(plate_metadata, required_cols)
 
     # Filter plates from source_4
     if "ORF" in plate_types:
@@ -304,7 +304,7 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
     without matching ORF/CRISPR data will have NULL values in the merged columns.
     """
     well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
-    _validate_columns(well_metadata, ["Metadata_JCP2022"])
+    validate_columns(well_metadata, ["Metadata_JCP2022"])
 
     if "ORF" in plate_types:
         orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")

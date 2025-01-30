@@ -7,9 +7,9 @@ import pandas as pd
 import numpy as np
 from typing import List, Optional
 
-from preprocessing.io import split_parquet
-from preprocessing.metadata import NEGCON_CODES
-from preprocessing.io import _validate_columns
+from .io import split_parquet
+from .metadata import NEGCON_CODES
+from .utils import validate_columns
 
 
 def _index(
@@ -46,7 +46,7 @@ def _index(
         Boolean array indicating which samples to include.
     """
     required_cols = ["Metadata_PlateType", "Metadata_pert_type", "Metadata_JCP2022"]
-    _validate_columns(meta, required_cols)
+    validate_columns(meta, required_cols)
 
     index = meta["Metadata_PlateType"].isin(plate_types)
     index &= meta["Metadata_pert_type"] != "poscon"
@@ -77,7 +77,7 @@ def _group_negcons(meta: pd.DataFrame) -> None:
         column. Modified in-place to update negative control identifiers.
     """
     required_cols = ["Metadata_JCP2022"]
-    _validate_columns(meta, required_cols)
+    validate_columns(meta, required_cols)
 
     negcon_ix = meta["Metadata_JCP2022"].isin(NEGCON_CODES)
     n_negcon = negcon_ix.sum()
@@ -108,7 +108,7 @@ def average_precision_negcon(
         "Metadata_Plate",
         "Metadata_pert_type",
     ]
-    _validate_columns(meta, required_cols)
+    validate_columns(meta, required_cols)
 
     ix = _index(meta, plate_types, include_codes=NEGCON_CODES)
     meta = meta[ix].copy()
@@ -149,7 +149,7 @@ def average_precision_nonrep(
         "Metadata_Plate",
         "Metadata_pert_type",
     ]
-    _validate_columns(meta, required_cols)
+    validate_columns(meta, required_cols)
 
     ix = _index(meta, plate_types, ignore_codes=NEGCON_CODES)
     meta = meta[ix].copy()
@@ -183,7 +183,7 @@ def mean_average_precision(
     """
     ap_scores = pd.read_parquet(ap_path)
     required_cols = ["Metadata_JCP2022"]
-    _validate_columns(ap_scores, required_cols)
+    validate_columns(ap_scores, required_cols)
 
     map_scores = copairs.mean_average_precision(
         ap_scores, "Metadata_JCP2022", threshold=threshold, null_size=10000, seed=0

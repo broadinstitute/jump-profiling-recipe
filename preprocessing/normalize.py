@@ -4,7 +4,8 @@ Functions for normalizing feature data
 
 import numpy as np
 import pandas as pd
-from preprocessing.io import merge_parquet, split_parquet, _validate_columns
+from .io import merge_parquet, split_parquet
+from .utils import validate_columns
 
 
 def mad(variant_feats_path: str, norm_stats_path: str, normalized_path: str) -> None:
@@ -29,12 +30,12 @@ def mad(variant_feats_path: str, norm_stats_path: str, normalized_path: str) -> 
     meta, vals, features = split_parquet(variant_feats_path)
 
     # Validate required columns are present
-    _validate_columns(meta, ["Metadata_Plate"])
+    validate_columns(meta, ["Metadata_Plate"])
 
     # Load and filter normalization statistics to match our features
     norm_stats = pd.read_parquet(norm_stats_path)
     norm_stats = norm_stats.query("feature in @features")
-    _validate_columns(norm_stats, ["feature", "mad", "median", "Metadata_Plate"])
+    validate_columns(norm_stats, ["feature", "mad", "median", "Metadata_Plate"])
 
     # Sort data by plate for efficient processing and broadcasting
     plates, counts = np.unique(meta["Metadata_Plate"], return_counts=True)
