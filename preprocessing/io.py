@@ -12,6 +12,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from tqdm.contrib.concurrent import thread_map
 import logging
+from pathlib import Path
 
 from .metadata import (
     build_path,
@@ -240,6 +241,19 @@ def prealloc_params(
         .drop_duplicates()
         .apply(build_path, axis=1)
     ).values
+
+    # Filter out missing paths
+    valid_paths = []
+    for path in paths:
+        if not Path(path).exists():
+            logger.warning(f"Missing file: {path}")
+            continue
+        valid_paths.append(path)
+
+    if not valid_paths:
+        raise ValueError("No valid paths found")
+
+    paths = np.array(valid_paths)
 
     def get_num_rows(path: str) -> int:
         with pq.ParquetFile(path) as file:
