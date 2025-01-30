@@ -16,7 +16,7 @@ import pandas as pd
 from scipy.stats import median_abs_deviation
 from tqdm.contrib.concurrent import thread_map
 from preprocessing.io import merge_parquet, _validate_columns
-from .metadata import find_feat_cols, find_meta_cols, NEGCON_CODES
+from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def get_feat_stats(
         The input DataFrame containing feature columns and possibly metadata columns.
     features : list of str, optional
         The names of the feature columns for which to compute statistics.
-        If None, automatically determine feature columns using `find_feat_cols`.
+        If None, automatically determine feature columns using `get_feature_columns`.
 
     Returns
     -------
@@ -47,7 +47,7 @@ def get_feat_stats(
         additional "iqr" column.
     """
     if features is None:
-        features = find_feat_cols(dframe)
+        features = get_feature_columns(dframe)
     desc = thread_map(lambda x: dframe[x].describe(), features, leave=False)
     desc = pd.DataFrame(desc)
     desc["iqr"] = desc["75%"] - desc["25%"]
@@ -77,7 +77,7 @@ def get_plate_stats(dframe: pd.DataFrame) -> pd.DataFrame:
     # Target 2 in scenario 2 are negligible.
     # mad_fn = partial(median_abs_deviation, nan_policy="omit", axis=0, scale=1 / 1.4826)
 
-    feat_cols = find_feat_cols(dframe)
+    feat_cols = get_feature_columns(dframe)
     dframe = dframe[feat_cols + ["Metadata_Plate"]]
     median = dframe.groupby("Metadata_Plate", observed=True).median()
     max_ = dframe.groupby("Metadata_Plate", observed=True).max()
@@ -172,7 +172,7 @@ def compute_norm_stats(parquet_path: str, df_stats_path: str, use_negcon: bool) 
         logger.info("computing plate stats for all treatments")
     dframe_stats = get_plate_stats(dframe_norm)
     logger.info("stats done.")
-    add_metadata(dframe_stats, dframe[find_meta_cols(dframe)])
+    add_metadata(dframe_stats, dframe[get_metadata_columns(dframe)])
     dframe_stats.to_parquet(df_stats_path)
 
 
@@ -195,7 +195,7 @@ def remove_nan_infs_columns(dframe: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         A DataFrame excluding all columns that contained NaN or infinite values.
     """
-    feat_cols = find_feat_cols(dframe)
+    feat_cols = get_feature_columns(dframe)
     withnan = dframe[feat_cols].isna().sum()[lambda x: x > 0]
     withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
     withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
@@ -243,7 +243,7 @@ def select_variant_features(
 
     # Filter features
     variant_features = sorted(variant_features)
-    meta = dframe[find_meta_cols(dframe)]
+    meta = dframe[get_metadata_columns(dframe)]
     vals = dframe[variant_features].values
     merge_parquet(meta, vals, variant_features, variant_feats_path)
 

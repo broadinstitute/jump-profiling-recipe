@@ -1,9 +1,14 @@
 """
-Functions for cleaning feature data
+Functions for generic numerical data cleaning and outlier handling.
+
+This module provides utilities for cleaning numerical feature data without any
+domain-specific knowledge.
+
+For biology-specific corrections and annotations, see correct/corrections.py
 """
 
 import pandas as pd
-from .metadata import find_feat_cols
+from .metadata import get_feature_columns
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,7 +30,7 @@ def clip_features(dframe: pd.DataFrame, threshold: float) -> pd.DataFrame:
     pd.DataFrame
         DataFrame with clipped feature values.
     """
-    feat_cols = find_feat_cols(dframe.columns)
+    feat_cols = get_feature_columns(dframe.columns)
     counts = (dframe.loc[:, feat_cols].abs() > threshold).sum()[lambda x: x > 0]
     if len(counts) > 0:
         logger.info(f"Clipping {counts.sum()} values in {len(counts)} columns")
@@ -51,7 +56,7 @@ def drop_outlier_features(
         - pd.DataFrame: DataFrame with outlier features removed
         - int: Number of columns removed due to large values
     """
-    feat_cols = find_feat_cols(dframe.columns)
+    feat_cols = get_feature_columns(dframe.columns)
     large_feat = dframe[feat_cols].abs().quantile(0.99) > threshold
     large_feat = set(large_feat[large_feat].index)
     keep_cols = [c for c in dframe.columns if c not in large_feat]

@@ -1,4 +1,8 @@
-"""Functions for data preprocessing, annotation, and correction.
+"""Functions for biology-specific data preprocessing and corrections.
+
+This module provides domain-specific utilities for biological data.
+
+For generic numerical data cleaning, see preprocessing/clean.py
 
 File Structure:
 - DataFrame Column Operations: Utilities for handling metadata and feature columns
@@ -18,6 +22,7 @@ from statsmodels.formula.api import ols
 import logging
 from tqdm.auto import tqdm
 from preprocessing.io import _validate_columns
+from preprocessing.metadata import get_feature_columns, get_metadata_columns
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.WARN)
@@ -26,38 +31,6 @@ logger = logging.getLogger(__name__)
 # ------------------------------
 # DataFrame Column Operations
 # ------------------------------
-
-
-def get_meta_cols(df: pd.DataFrame) -> pd.Index:
-    """Get metadata columns from dataframe.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pandas.Index
-        List of metadata column names
-    """
-    return df.filter(regex="^(Metadata_)").columns
-
-
-def get_feature_cols(df: pd.DataFrame) -> pd.Index:
-    """Get feature columns from dataframe.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pandas.Index
-        List of feature column names
-    """
-    return df.filter(regex="^(?!Metadata_)").columns
 
 
 def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
@@ -73,7 +46,7 @@ def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
     pandas.DataFrame
         Dataframe containing only metadata columns
     """
-    return df[get_meta_cols(df)]
+    return df[get_metadata_columns(df)]
 
 
 def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
@@ -89,7 +62,7 @@ def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
     pandas.DataFrame
         Dataframe containing only feature columns
     """
-    return df[get_feature_cols(df)]
+    return df[get_feature_columns(df)]
 
 
 # ------------------------------
@@ -115,7 +88,7 @@ def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
     """
     org_shape = ann_dframe.shape[0]
     ann_dframe_clean = ann_dframe[
-        ~ann_dframe[get_feature_cols(ann_dframe)].isnull().T.any()
+        ~ann_dframe[get_feature_columns(ann_dframe)].isnull().T.any()
     ]
     ann_dframe_clean.reset_index(drop=True, inplace=True)
     if org_shape - ann_dframe_clean.shape[0] < 100:
@@ -361,7 +334,7 @@ def subtract_well_mean(input_path: str, output_path: str) -> None:
     df = drop_rows_with_na_features(df)
     logger.info(f"Subtracting well means for {len(df)} profiles")
 
-    feature_cols = get_feature_cols(df)
+    feature_cols = get_feature_columns(df)
     mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
     df[feature_cols] = df[feature_cols].values - mean_
     df.to_parquet(output_path, index=False)
@@ -388,8 +361,8 @@ def transform_data(input_path: str, output_path: str, variance: float = 0.98) ->
     df = pd.read_parquet(input_path)
     logger.info(f"Applying PCA ({variance} variance) to {len(df)} profiles")
 
-    metadata = df[get_meta_cols(df)]
-    features = df[get_feature_cols(df)]
+    metadata = df[get_metadata_columns(df)]
+    features = df[get_feature_columns(df)]
     features = pd.DataFrame(PCA(variance).fit_transform(features))
 
     df_new = pd.concat([metadata, features], axis=1)
@@ -452,7 +425,7 @@ def arm_correction(
         df_exp[df_exp["zfpkm"] < -3].groupby("Metadata_arm")["gene"].nunique() > 20
     )
 
-    feature_cols = get_feature_cols(df_crispr)
+    feature_cols = get_feature_columns(df_crispr)
     feature_cols_unexpressed = [feat + "_unexpressed" for feat in feature_cols]
 
     df_unexp_mean = (
@@ -566,7 +539,7 @@ def regress_out_cell_counts_parallel(
     df = ann_df if inplace else ann_df.copy()
     df = merge_cell_counts(df, cc_path)
 
-    feature_cols = df.filter(regex="^(?!Metadata_)").columns.to_list()
+    feature_cols = get_feature_columns(df).to_list()
     feature_cols.remove(cc_col)
     feature_cols = [
         feature for feature in feature_cols if df[feature].nunique() > min_unique

@@ -17,8 +17,8 @@ from .metadata import (
     build_path,
     load_metadata,
     MICRO_CONFIG,
-    find_feat_cols,
-    find_meta_cols,
+    get_feature_columns,
+    get_metadata_columns,
     POSCON_CODES,
     NEGCON_CODES,
 )
@@ -59,7 +59,7 @@ def report_nan_infs_columns(dframe: pd.DataFrame) -> None:
         DataFrame to check for NaN and infinite values
     """
     logger.info("Checking for NaN and INF")
-    feat_cols = find_feat_cols(dframe)
+    feat_cols = get_feature_columns(dframe)
     withnan = dframe[feat_cols].isna().sum()[lambda x: x > 0]
     withinf = (dframe[feat_cols] == np.inf).sum()[lambda x: x > 0]
     withninf = (dframe[feat_cols] == -np.inf).sum()[lambda x: x > 0]
@@ -105,7 +105,7 @@ def split_parquet(
     """
     dframe = pd.read_parquet(dframe_path)
     if features is None:
-        features = find_feat_cols(dframe)
+        features = get_feature_columns(dframe)
     else:
         # Validate that specified features exist
         missing_cols = set(features) - set(dframe.columns)
@@ -116,7 +116,7 @@ def split_parquet(
     for i, c in enumerate(features):
         vals[:, i] = dframe[c]
 
-    meta_cols = find_meta_cols(dframe)
+    meta_cols = get_metadata_columns(dframe)
     if not meta_cols:
         raise ValueError("No metadata columns found in DataFrame")
     meta = dframe[meta_cols].copy()
@@ -290,8 +290,8 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     total = slices[-1, 1]
 
     with pq.ParquetFile(paths[0]) as f:
-        meta_cols = find_meta_cols(f.schema.names)
-        feat_cols = find_feat_cols(f.schema.names)
+        meta_cols = get_metadata_columns(f.schema.names)
+        feat_cols = get_feature_columns(f.schema.names)
     meta = np.empty([total, len(meta_cols)], dtype="|S128")
     feats = np.empty([total, len(feat_cols)], dtype=np.float32)
 
