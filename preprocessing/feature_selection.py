@@ -1,16 +1,37 @@
 import logging
-
 import pandas as pd
-
 from pycytominer.operations import correlation_threshold, variance_threshold
-
 from .metadata import find_feat_cols
 
 logger = logging.getLogger(__name__)
 
 
-def select_features(dframe_path, feat_selected_path, keep_image_features):
-    """Run feature selection"""
+def select_features(
+    dframe_path: str, feat_selected_path: str, keep_image_features: bool = False
+) -> None:
+    """Run feature selection pipeline to filter out unwanted features.
+
+    This function performs several feature selection steps:
+    1. Removes low variance features
+    2. Removes highly correlated features
+    3. Removes features in blocklist
+    4. Optionally removes image features
+    5. Removes features with NaN values
+
+    Parameters
+    ----------
+    dframe_path : str
+        Path to input parquet file containing the feature dataframe
+    feat_selected_path : str
+        Path where the filtered dataframe will be saved as parquet
+    keep_image_features : bool
+        If False, removes all features starting with "Image"
+
+    Returns
+    -------
+    None
+        Saves filtered dataframe to feat_selected_path
+    """
     dframe = pd.read_parquet(dframe_path)
     features = find_feat_cols(dframe.columns)
     low_variance = variance_threshold(dframe, features)
