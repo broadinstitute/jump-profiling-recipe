@@ -15,22 +15,56 @@ logger = logging.getLogger(__name__)
 
 
 def get_meta_cols(df):
-    """return a list of metadata columns"""
+    """Get metadata columns from dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pandas.Index
+        List of metadata column names
+    """
     return df.filter(regex="^(Metadata_)").columns
 
 
 def get_feature_cols(df):
-    """returna  list of featuredata columns"""
+    """Get feature columns from dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pandas.Index
+        List of feature column names
+    """
     return df.filter(regex="^(?!Metadata_)").columns
 
 
-def drop_na_feature_rows(ann_dframe: pd.DataFrame) -> pd.DataFrame:
-    """
-    Drop rows with NA values in non-feature columns.
+def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
+    """Drop rows containing NA values in feature columns.
+
+    Parameters
+    ----------
+    ann_dframe : pandas.DataFrame
+        Input dataframe to process
+
+    Returns
+    -------
+    pandas.DataFrame
+        If fewer than 100 rows would be dropped:
+            Returns cleaned dataframe with rows containing NA values in feature columns removed
+        Otherwise:
+            Returns original dataframe unchanged
     """
     org_shape = ann_dframe.shape[0]
     ann_dframe_clean = ann_dframe[
-        ~ann_dframe.filter(regex="^(?!Metadata_)").isnull().T.any()
+        ~ann_dframe[get_feature_cols(ann_dframe)].isnull().T.any()
     ]
     ann_dframe_clean.reset_index(drop=True, inplace=True)
     if org_shape - ann_dframe_clean.shape[0] < 100:
@@ -39,13 +73,24 @@ def drop_na_feature_rows(ann_dframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def subtract_well_mean(input_path: str, output_path: str):
-    """
-    Subtract the mean of each feature per each well.
+    """Subtract the mean of each feature per each well.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input parquet file containing the dataframe
+    output_path : str
+        Path where the processed dataframe will be saved as parquet
+
+    Returns
+    -------
+    None
+        Saves processed dataframe to output_path
     """
     df = pd.read_parquet(input_path)
-    df = drop_na_feature_rows(df)
+    df = drop_rows_with_na_features(df)
 
-    feature_cols = df.filter(regex="^(?!Metadata_)").columns
+    feature_cols = get_feature_cols(df)
     mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
     df[feature_cols] = df[feature_cols].values - mean_
     df.to_parquet(output_path, index=False)
@@ -62,6 +107,12 @@ def transform_data(input_path: str, output_path: str, variance=0.98):
         Path to output dataframe
     variance : float, optional
         Variance to keep after PCA, by default 0.98
+
+    Returns
+    -------
+    None
+        Saves transformed dataframe to output_path with PCA-transformed features
+        and original metadata columns
     """
     df = pd.read_parquet(input_path)
 
@@ -76,17 +127,50 @@ def transform_data(input_path: str, output_path: str, variance=0.98):
 
 
 def get_metadata(df):
-    """return dataframe of just metadata columns"""
+    """Get metadata columns subset from dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe containing only metadata columns
+    """
     return df[get_meta_cols(df)]
 
 
 def get_featuredata(df):
-    """return dataframe of just featuredata columns"""
+    """Get feature columns subset from dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe containing only feature columns
+    """
     return df[get_feature_cols(df)]
 
 
-def remove_nan_features(df):
-    """remove nan features"""
+def drop_features_with_na(df):
+    """Remove features containing NaN values.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe with NaN-containing features removed
+    """
     _, c = np.where(df.isna())
     features_to_remove = [
         _ for _ in list(df.columns[list(set(c))]) if not _.startswith("Metadata_")
@@ -96,7 +180,20 @@ def remove_nan_features(df):
 
 
 def annotate_gene(df, df_meta):
-    """annotate genes names"""
+    """Annotate dataframe with gene symbols.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+    df_meta : pandas.DataFrame
+        Metadata dataframe containing gene symbol information
+
+    Returns
+    -------
+    pandas.DataFrame
+        Annotated dataframe with gene symbols
+    """
     if "Metadata_Symbol" not in df.columns:
         df = df.merge(
             df_meta[["Metadata_JCP2022", "Metadata_Symbol"]],
@@ -107,7 +204,30 @@ def annotate_gene(df, df_meta):
 
 
 def annotate_chromosome(df, df_meta):
-    """annotate chromosome locus"""
+    """Annotate dataframe with chromosome information.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+    df_meta : pandas.DataFrame
+        Metadata dataframe containing chromosome information
+
+    Returns
+    -------
+    pandas.DataFrame
+        Annotated dataframe with chromosome information
+    """
+
+    def split_arm(locus):
+        return (
+            f"{locus.split('p')[0]}p"
+            if "p" in locus
+            else f"{locus.split('q')[0]}q"
+            if "q" in locus
+            else np.nan
+        )
+
     if "Metadata_Locus" not in df.columns:
         df_meta_copy = df_meta.drop_duplicates(subset=["Approved_symbol"]).reset_index(
             drop=True
@@ -135,28 +255,36 @@ def annotate_chromosome(df, df_meta):
     return df
 
 
-def split_arm(locus):
-    """helper function to split p and q arms"""
-    if "p" in locus:
-        return locus.split("p")[0] + "p"
-    if "q" in locus:
-        return locus.split("q")[0] + "q"
-    return np.nan
-
-
 def annotate_dataframe(
     df_path: str,
     output_path: str,
     df_gene_path: str,
     df_chrom_path: str,
 ):
-    """Annotate gene and chromosome name and sort genes based on
-    chromosome location"""
+    """Annotate dataframe with gene and chromosome information.
+
+    Parameters
+    ----------
+    df_path : str
+        Path to input parquet file containing profiles
+    output_path : str
+        Path where annotated dataframe will be saved
+    df_gene_path : str
+        Path to CSV file containing gene annotation data
+    df_chrom_path : str
+        Path to TSV file containing chromosome annotation data
+
+    Returns
+    -------
+    None
+        Saves annotated dataframe to output_path with added gene symbols
+        and chromosome location information
+    """
     df = pd.read_parquet(df_path)
     df_gene = pd.read_csv(df_gene_path)
     df_chrom = pd.read_csv(df_chrom_path, sep="\t", dtype=str)
 
-    df = remove_nan_features(df)
+    df = drop_features_with_na(df)
     df = annotate_gene(df, df_gene)
     df = annotate_chromosome(df, df_chrom)
     df.to_parquet(output_path)
@@ -165,7 +293,29 @@ def annotate_dataframe(
 def arm_correction(
     crispr_profile_path: str, output_path: str, gene_expression_file: str
 ):
-    """Perform chromosome arm correction"""
+    """Perform chromosome arm correction on CRISPR profiles.
+
+    This function corrects for chromosome arm effects by:
+    1. Separating CRISPR and non-CRISPR profiles
+    2. Identifying unexpressed genes (zfpkm < -3)
+    3. Computing mean profiles for unexpressed genes by chromosome arm
+    4. Subtracting arm-specific background from CRISPR profiles
+    5. Recombining corrected profiles
+
+    Parameters
+    ----------
+    crispr_profile_path : str
+        Path to parquet file containing CRISPR profiles
+    output_path : str
+        Path where corrected profiles will be saved
+    gene_expression_file : str
+        Path to CSV file containing gene expression data (with zfpkm values)
+
+    Returns
+    -------
+    None
+        Saves chromosome arm-corrected profiles to output_path
+    """
     df_exp = pd.read_csv(gene_expression_file)
     df = pd.read_parquet(crispr_profile_path)
     crispr_ix = df["Metadata_PlateType"] == "CRISPR"
@@ -216,7 +366,21 @@ def arm_correction(
     df.to_parquet(output_path, index=False)
 
 
-def merge_cell_counts(df: pd.DataFrame, cc_path):
+def merge_cell_counts(df, cc_path):
+    """Merge cell count data with input dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe
+    cc_path : str
+        Path to cell count CSV file
+
+    Returns
+    -------
+    pandas.DataFrame
+        Merged dataframe with cell count information
+    """
     df_cc = pd.read_csv(
         cc_path,
         low_memory=False,
@@ -291,6 +455,6 @@ def regress_out_cell_counts_parallel(
         if c not in df_res:
             df_res[c] = df[c].values
     print("remove nans")
-    df_res = remove_nan_features(df_res)
+    df_res = drop_features_with_na(df_res)
     print("save file")
     df_res.to_parquet(output_path, index=False)
