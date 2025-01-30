@@ -2,13 +2,25 @@ import pandas as pd
 from .metadata import find_feat_cols
 import logging
 
-# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.WARN)
 
 
-def clip_features(dframe, threshold):
-    """Clip feature values to a given magnitude"""
+def clip_features(dframe: pd.DataFrame, threshold: float) -> pd.DataFrame:
+    """Clip feature values to a given magnitude.
+
+    Parameters
+    ----------
+    dframe : pd.DataFrame
+        Input DataFrame containing features to be clipped.
+    threshold : float
+        Maximum absolute value allowed for features. Values outside
+        [-threshold, threshold] will be clipped.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with clipped feature values.
+    """
     feat_cols = find_feat_cols(dframe.columns)
     counts = (dframe.loc[:, feat_cols].abs() > threshold).sum()[lambda x: x > 0]
     if len(counts) > 0:
@@ -17,8 +29,24 @@ def clip_features(dframe, threshold):
     return dframe
 
 
-def drop_outlier_feats(dframe: pd.DataFrame, threshold: float):
-    """Remove columns with 1 percentile of absolute values larger than threshold"""
+def drop_outlier_features(
+    dframe: pd.DataFrame, threshold: float
+) -> tuple[pd.DataFrame, int]:
+    """Remove columns with 1 percentile of absolute values larger than threshold.
+
+    Parameters
+    ----------
+    dframe : pd.DataFrame
+        Input DataFrame containing features to analyze.
+    threshold : float
+        Maximum allowed value for the 99th percentile of absolute feature values.
+
+    Returns
+    -------
+    tuple
+        - pd.DataFrame: DataFrame with outlier features removed
+        - int: Number of columns removed due to large values
+    """
     feat_cols = find_feat_cols(dframe.columns)
     large_feat = dframe[feat_cols].abs().quantile(0.99) > threshold
     large_feat = set(large_feat[large_feat].index)
@@ -29,9 +57,28 @@ def drop_outlier_feats(dframe: pd.DataFrame, threshold: float):
     return dframe, num_ignored
 
 
-def outlier_removal(input_path: str, output_path: str):
-    """Remove outliers"""
+def outlier_removal(input_path: str, output_path: str) -> None:
+    """Remove outliers from features in a parquet file.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input parquet file containing the DataFrame.
+    output_path : str
+        Path where the cleaned DataFrame will be saved as parquet.
+
+    Returns
+    -------
+    None
+        Writes cleaned DataFrame to output_path.
+
+    Notes
+    -----
+    This function performs two cleaning steps:
+    1. Removes features where the 99th percentile exceeds 1e2
+    2. Clips remaining feature values to [-1e2, 1e2]
+    """
     dframe = pd.read_parquet(input_path)
-    dframe, _ = drop_outlier_feats(dframe, threshold=1e2)
+    dframe, _ = drop_outlier_features(dframe, threshold=1e2)
     dframe = clip_features(dframe, threshold=1e2)
     dframe.to_parquet(output_path)
