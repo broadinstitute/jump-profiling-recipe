@@ -164,7 +164,10 @@ def build_path(row: pd.Series) -> str:
     str
         Formatted path string to the parquet file.
     """
-    validate_columns(row, ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"])
+    required_cols = ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]
+    missing_cols = [col for col in required_cols if col not in row.index]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
 
     template = (
         "./inputs/{Metadata_Source}/workspace/profiles/"
