@@ -75,7 +75,7 @@ METADATA_PATTERN = "^(Metadata_)"
 FEATURE_PATTERN = "^(?!Metadata_)"
 
 
-def get_feature_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.Index:
+def get_feature_columns(cols: Iterable[str] | pd.DataFrame) -> list[str]:
     """Get column names for features.
 
     Parameters
@@ -90,11 +90,11 @@ def get_feature_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.In
         Returns pd.Index if input is DataFrame, list otherwise
     """
     if isinstance(cols, pd.DataFrame):
-        return cols.filter(regex=FEATURE_PATTERN).columns
+        return cols.filter(regex=FEATURE_PATTERN).columns.tolist()
     return [c for c in cols if re.match(FEATURE_PATTERN, c)]
 
 
-def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.Index:
+def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str]:
     """Get column names for metadata.
 
     Parameters
@@ -109,7 +109,7 @@ def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str] | pd.I
         Returns pd.Index if input is DataFrame, list otherwise
     """
     if isinstance(cols, pd.DataFrame):
-        return cols.filter(regex=METADATA_PATTERN).columns
+        return cols.filter(regex=METADATA_PATTERN).columns.tolist()
     return [c for c in cols if re.match(METADATA_PATTERN, c)]
 
 
