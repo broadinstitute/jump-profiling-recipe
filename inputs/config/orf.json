@@ -13,5 +13,5 @@
     "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25,
-    "cc_path": "inputs/orf_cell_counts.csv.gz"
+    "cc_path": "inputs/cell_counts/orf_cell_counts.csv.gz"
 }

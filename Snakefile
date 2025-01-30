@@ -115,8 +115,8 @@ rule annotate_genes:
     output:
         "outputs/{scenario}/{pipeline}_annotated.parquet",
     params:
-        df_gene_path="inputs/crispr.csv.gz",
-        df_chrom_path="inputs/gene_chromosome_map.tsv",
+        df_gene_path="inputs/metadata/crispr.csv.gz",
+        df_chrom_path="inputs/metadata/gene_chromosome_map.tsv",
     run:
         correct.corrections.annotate_dataframe(
             *input, *output, params.df_gene_path, params.df_chrom_path
@@ -138,7 +138,7 @@ rule correct_arm:
     output:
         "outputs/{scenario}/{pipeline}_corrected.parquet",
     params:
-        gene_expression_path="inputs/Recursion_U2OS_expression_data.csv.gz",
+        gene_expression_path="inputs/metadata/Recursion_U2OS_expression_data.csv.gz",
     run:
         correct.corrections.arm_correction(*input, *output, params.gene_expression_path)
 

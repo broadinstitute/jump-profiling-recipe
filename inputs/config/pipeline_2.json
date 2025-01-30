@@ -4,14 +4,28 @@
     "keep_image_features": false,
     "use_mad_negcon": false,
     "sources": [
-        "source_1", "source_2", "source_3", "source_5", "source_6", "source_7", "source_8", "source_9", "source_10", "source_11", "source_4", "source_13"
+        "source_1",
+        "source_2",
+        "source_3",
+        "source_4",
+        "source_5",
+        "source_6",
+        "source_7",
+        "source_8",
+        "source_9",
+        "source_10",
+        "source_11",
+        "source_13"
     ],
     "plate_types": [
-        "COMPOUND", "TARGET2", "ORF", "CRISPR"
+        "COMPOUND",
+        "TARGET2",
+        "ORF",
+        "CRISPR"
     ],
     "batch_key": "Metadata_Batch",
     "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25,
-    "cc_path": "inputs/all_cell_counts.csv.gz"
+    "cc_path": "inputs/cell_counts/all_cell_counts.csv.gz"
 }

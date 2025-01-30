@@ -14,7 +14,7 @@ if [[ ! "$pert" =~ ^(orf|crispr|compound)$ ]]; then
   exit 1
 fi
 
-configfile="inputs/$pert.json"
+configfile="inputs/config/$pert.json"
 BASEPATH="s3://cellpainting-gallery/cpg0016-jump"
 
 readarray -t sources < <(jq -r '.sources[]' "$configfile")

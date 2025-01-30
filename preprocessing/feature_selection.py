@@ -48,7 +48,7 @@ def select_features(
     dframe.drop(columns=low_variance + high_corr, inplace=True)
 
     cols = get_feature_columns(dframe.columns)
-    with open("blocklist_features.txt", "r") as fpointer:
+    with open("inputs/metadata/blocklist_features.txt", "r") as fpointer:
         blocklist = fpointer.read().splitlines()[1:]
     blocklist = [c for c in cols if c in blocklist]
     dframe.drop(columns=blocklist, inplace=True)

@@ -25,5 +25,5 @@ source download_data.sh compound
 ## Run workflow
 
 ```bash
-snakemake -c1 --configfile inputs/compound.json
+snakemake -c1 --configfile inputs/config/compound.json
 ```

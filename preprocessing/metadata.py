@@ -204,7 +204,7 @@ def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
     redlist.add("BR00123528A")
 
     # filter ORF plates.
-    metadata = pd.read_csv("inputs/experiment-metadata.tsv", sep="\t")
+    metadata = pd.read_csv("inputs/metadata/experiment-metadata.tsv", sep="\t")
     query = 'Batch=="Batch12"'
     bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
     redlist |= bad_plates
