@@ -30,6 +30,26 @@ logger = logging.getLogger(__name__)
 # ------------------------------
 
 
+def _validate_columns(meta: pd.DataFrame, required_columns: list[str]) -> None:
+    """Validate that required columns are present in metadata DataFrame.
+
+    Parameters
+    ----------
+    meta : pd.DataFrame
+        Metadata DataFrame to validate
+    required_columns : list[str]
+        List of column names that must be present
+
+    Raises
+    ------
+    ValueError
+        If any required columns are missing from the DataFrame
+    """
+    missing_cols = set(required_columns) - set(meta.columns)
+    if missing_cols:
+        raise ValueError(f"Required columns missing: {missing_cols}")
+
+
 def report_nan_infs_columns(dframe: pd.DataFrame) -> None:
     """Report columns containing NaN and infinite values.
 
@@ -153,10 +173,7 @@ def add_pert_type(meta: pd.DataFrame, col: str = "Metadata_pert_type") -> None:
     col : str, optional
         Name of the column to add, by default "Metadata_pert_type"
     """
-    if "Metadata_JCP2022" not in meta.columns:
-        raise ValueError(
-            "Metadata_JCP2022 column required for perturbation type annotation"
-        )
+    _validate_columns(meta, ["Metadata_JCP2022"])
 
     meta[col] = "trt"
     meta.loc[meta["Metadata_JCP2022"].isin(POSCON_CODES), col] = "poscon"
@@ -172,8 +189,7 @@ def add_row_col(meta: pd.DataFrame) -> None:
     meta : pd.DataFrame
         Metadata DataFrame to modify
     """
-    if "Metadata_Well" not in meta.columns:
-        raise ValueError("Metadata_Well column required for row/column extraction")
+    _validate_columns(meta, ["Metadata_Well"])
 
     well_regex = r"^(?P<row>[a-zA-Z]{1,2})(?P<column>[0-9]{1,2})$"
     position = meta["Metadata_Well"].str.extract(well_regex)
@@ -192,8 +208,7 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
     meta : pd.DataFrame
         Metadata DataFrame to modify
     """
-    if "Metadata_Source" not in meta.columns:
-        raise ValueError("Metadata_Source column required for microscopy info")
+    _validate_columns(meta, ["Metadata_Source"])
 
     configs = meta["Metadata_Source"].map(MICRO_CONFIG)
     if configs.isna().any():
@@ -318,16 +333,13 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
     """
     dframe = load_data(sources, plate_types)
 
-    # Validate required columns exist before operations
     required_cols = [
         "Metadata_Source",
         "Metadata_Plate",
         "Metadata_Well",
         "Metadata_JCP2022",
     ]
-    missing_cols = set(required_cols) - set(dframe.columns)
-    if missing_cols:
-        raise ValueError(f"Required columns missing: {missing_cols}")
+    _validate_columns(dframe, required_cols)
 
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]
