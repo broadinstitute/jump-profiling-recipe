@@ -66,7 +66,7 @@ def drop_outlier_features(
     return dframe, num_ignored
 
 
-def outlier_removal(input_path: str, output_path: str) -> None:
+def remove_outliers(input_path: str, output_path: str) -> None:
     """Remove outliers from features in a parquet file.
 
     Parameters

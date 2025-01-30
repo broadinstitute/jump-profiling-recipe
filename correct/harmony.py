@@ -9,7 +9,7 @@ from preprocessing import io
 logger = logging.getLogger(__name__)
 
 
-def harmony(dframe_path, batch_key, output_path):
+def apply_harmony_correction(dframe_path, batch_key, output_path):
     """Perform Harmony batch correction on feature data.
 
     Parameters

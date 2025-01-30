@@ -11,7 +11,7 @@ from preprocessing import io
 logger = logging.getLogger(__name__)
 
 
-def create_merged_dataframe(
+def merge_dataframe(
     meta: pd.DataFrame, vals: np.ndarray, features: list[str]
 ) -> pd.DataFrame:
     """Merge metadata and feature values into a single DataFrame.
@@ -66,7 +66,7 @@ def restrict_column_type(input_path: str, meta_col_new=None) -> pd.DataFrame:
         meta[c] = meta[c].astype("string")
     feat_val = feat_val.astype("float32")
     feat_col = [str(c) for c in feat_col]
-    dframe = create_merged_dataframe(meta, feat_val, feat_col)
+    dframe = merge_dataframe(meta, feat_val, feat_col)
     return dframe
 
 

@@ -100,13 +100,13 @@ rule cc_regress:
         )
 
 
-rule outlier_removal:
+rule remove_outliers:
     input:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_outlier.parquet",
     run:
-        pp.clean.outlier_removal(*input, *output)
+        pp.clean.remove_outliers(*input, *output)
 
 
 rule annotate_genes:
@@ -162,4 +162,4 @@ rule harmony:
     params:
         batch_key=config["batch_key"],
     run:
-        correct.harmony(*input, *params, *output)
+        correct.apply_harmony_correction(*input, *params, *output)

@@ -16,7 +16,7 @@ from preprocessing.metadata import NEGCON_CODES
 from pycytominer.operations import Spherize
 
 
-def log_uniform_sampling(
+def generate_log_uniform_samples(
     min_: float = -5.0,
     max_: float = 3.0,
     size: int = 25,
