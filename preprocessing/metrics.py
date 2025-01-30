@@ -5,26 +5,7 @@ from typing import List, Optional
 
 from preprocessing.io import split_parquet
 from preprocessing.metadata import NEGCON_CODES
-
-
-def _validate_columns(meta: pd.DataFrame, required_columns: List[str]) -> None:
-    """Validate that required columns are present in metadata DataFrame.
-
-    Parameters
-    ----------
-    meta : pd.DataFrame
-        Metadata DataFrame to validate
-    required_columns : List[str]
-        List of column names that must be present
-
-    Raises
-    ------
-    ValueError
-        If any required columns are missing from the DataFrame
-    """
-    missing_cols = [col for col in required_columns if col not in meta.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
+from preprocessing.io import _validate_columns
 
 
 def _index(
