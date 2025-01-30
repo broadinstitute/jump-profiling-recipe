@@ -175,7 +175,7 @@ def drop_features_with_na(df):
     features_to_remove = [
         _ for _ in list(df.columns[list(set(c))]) if not _.startswith("Metadata_")
     ]
-    print(f"Removed nan features: {features_to_remove}")
+    logger.info(f"Removing {len(features_to_remove)} features containing NaN values")
     return df.drop(features_to_remove, axis=1)
 
 
@@ -437,24 +437,26 @@ def regress_out_cell_counts_parallel(
         feature for feature in feature_cols if df[feature].nunique() > min_unique
     ]
 
-    print(f"Number of features to regress: {len(feature_cols)}")
+    logger.info(
+        f"Performing cell count regression on {len(feature_cols)} features (requiring >{min_unique} unique values per feature)"
+    )
     resid = np.empty((len(df), len(feature_cols)), dtype=np.float32)
     for i, feature in tqdm(
         enumerate(feature_cols), leave=False, total=len(feature_cols)
     ):
         model = ols(f"{feature} ~ {cc_col}", data=df).fit()
         resid[model.resid.index, i] = model.resid.values
-    print("masking nans")
+    logger.info("Replacing NaN regression residuals with original feature values")
     mask = np.isnan(resid)
     vals = df[feature_cols].values
     vals = mask * vals + (1 - mask) * resid
-    print("creating dataframe")
+    logger.info("Converting regression residuals to dataframe format")
     df_res = pd.DataFrame(index=df.index, columns=feature_cols, data=vals)
-    print("adding remaining columns")
+    logger.info("Adding non-feature columns (metadata) to dataframe")
     for c in df:
         if c not in df_res:
             df_res[c] = df[c].values
-    print("remove nans")
+    logger.info("Removing features that contain NaN values after regression")
     df_res = drop_features_with_na(df_res)
-    print("save file")
+    logger.info(f"Writing cell count corrected profiles to {output_path}")
     df_res.to_parquet(output_path, index=False)
