@@ -1,3 +1,7 @@
+"""
+Functions for normalizing feature data
+"""
+
 import numpy as np
 import pandas as pd
 from preprocessing.io import merge_parquet, split_parquet, _validate_columns

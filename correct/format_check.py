@@ -1,4 +1,6 @@
-"""Casting column types and standardize column names in profiles for public release"""
+"""
+Functions for formatting profiles for public release
+"""
 
 import os
 import pandas as pd

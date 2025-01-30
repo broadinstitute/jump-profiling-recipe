@@ -1,10 +1,5 @@
 """
-Sphering correction.
-
-The module includes:
-- log_uniform_sampling: Generates samples from a log-uniform distribution for parameter tuning
-- sphering: Applies sphering transformation to data stored in parquet files
-- select_best: Evaluates and selects the best sphering parameters based on average precision scores
+Functions for sphering
 
 The sphering transformation is trained only on negative control samples (specified by
 NEGCON_CODES) to ensure the transformation is learned from baseline cellular states.

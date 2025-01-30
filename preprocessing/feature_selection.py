@@ -1,3 +1,7 @@
+"""
+Functions for feature selection
+"""
+
 import logging
 import pandas as pd
 from pycytominer.operations import correlation_threshold, variance_threshold

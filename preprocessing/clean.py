@@ -1,3 +1,7 @@
+"""
+Functions for cleaning feature data
+"""
+
 import pandas as pd
 from .metadata import find_feat_cols
 import logging

@@ -1,3 +1,7 @@
+"""
+Functions for computing metrics
+"""
+
 import copairs.map as copairs
 import pandas as pd
 import numpy as np

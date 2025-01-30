@@ -1,4 +1,6 @@
-"""Correction methods"""
+"""
+Functions for batch correction
+"""
 
 import logging
 from harmonypy import run_harmony
