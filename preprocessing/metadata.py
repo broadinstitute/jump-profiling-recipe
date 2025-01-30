@@ -133,6 +133,39 @@ def build_path(row: pd.Series) -> str:
 # ------------------------------
 
 
+def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
+    """Get set of plate_id's that should not be considered in the analysis.
+
+    Parameters
+    ----------
+    plate_types : list[str]
+        List of plate types to consider.
+
+    Returns
+    -------
+    set[str]
+        Set of plate IDs to exclude from analysis.
+
+    Notes
+    -----
+    Excludes:
+    - Low concentration plates
+    - Plates from specific batches (e.g., Batch12)
+    """
+    # https://github.com/jump-cellpainting/jump-orf-analysis/issues/1#issuecomment-921888625
+    # Low concentration plates
+    redlist = set(["BR00127147", "BR00127148", "BR00127145", "BR00127146"])
+    # https://github.com/jump-cellpainting/aws/issues/70#issuecomment-1182444836
+    redlist.add("BR00123528A")
+
+    # filter ORF plates.
+    metadata = pd.read_csv("inputs/experiment-metadata.tsv", sep="\t")
+    query = 'Batch=="Batch12"'
+    bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
+    redlist |= bad_plates
+    return redlist
+
+
 def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     """Create filtered metadata DataFrame from plate-level metadata.
 
@@ -252,39 +285,6 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
     ]
 
     return well_metadata
-
-
-def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
-    """Get set of plate_id's that should not be considered in the analysis.
-
-    Parameters
-    ----------
-    plate_types : list[str]
-        List of plate types to consider.
-
-    Returns
-    -------
-    set[str]
-        Set of plate IDs to exclude from analysis.
-
-    Notes
-    -----
-    Excludes:
-    - Low concentration plates
-    - Plates from specific batches (e.g., Batch12)
-    """
-    # https://github.com/jump-cellpainting/jump-orf-analysis/issues/1#issuecomment-921888625
-    # Low concentration plates
-    redlist = set(["BR00127147", "BR00127148", "BR00127145", "BR00127146"])
-    # https://github.com/jump-cellpainting/aws/issues/70#issuecomment-1182444836
-    redlist.add("BR00123528A")
-
-    # filter ORF plates.
-    metadata = pd.read_csv("inputs/experiment-metadata.tsv", sep="\t")
-    query = 'Batch=="Batch12"'
-    bad_plates = set(metadata.query(query).Assay_Plate_Barcode)
-    redlist |= bad_plates
-    return redlist
 
 
 # ------------------------------
