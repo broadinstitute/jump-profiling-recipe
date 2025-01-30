@@ -3,9 +3,9 @@ Functions to load metadata information
 
 File Structure:
 - Constants & Configuration: Global constants and configuration variables
-- Column Operations: Functions for identifying metadata and feature columns
-- Metadata Loading & Filtering: Functions for loading and filtering metadata
-- Plate & Well Operations: Functions for handling plate and well-specific data
+- Core Utilities: Basic helper functions for column and path operations
+- Metadata Loading: Functions for loading and filtering plate/well data
+- Integration: High-level functions that combine multiple operations
 """
 
 import logging
@@ -64,7 +64,7 @@ SOURCE3_BATCH_REDLIST = {
 }
 
 # ------------------------------
-# Column Operations
+# Core Utilities
 # ------------------------------
 
 
@@ -102,31 +102,156 @@ def find_meta_cols(cols: Iterable[str]) -> list[str]:
     return meta_cols
 
 
+def build_path(row: pd.Series) -> str:
+    """Create the path to the parquet file.
+
+    Parameters
+    ----------
+    row : pd.Series
+        Row containing metadata information with required fields:
+        Metadata_Source, Metadata_Batch, Metadata_Plate.
+
+    Returns
+    -------
+    str
+        Formatted path string to the parquet file.
+    """
+    required_cols = ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]
+    missing_cols = [col for col in required_cols if col not in row.index]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    template = (
+        "./inputs/{Metadata_Source}/workspace/profiles/"
+        "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
+    )
+    return template.format(**row.to_dict())
+
+
 # ------------------------------
-# Metadata Loading & Filtering
+# Metadata Loading
 # ------------------------------
 
 
-def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
-    """Load and merge plate and well metadata.
+def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+    """Create filtered metadata DataFrame from plate-level metadata.
+
+    Loads plate metadata from './inputs/metadata/plate.csv.gz' and applies filtering based on
+    source identifiers and plate types. Also performs special filtering for ORF plates and
+    source_3 batches.
 
     Parameters
     ----------
     sources : list[str]
-        List of source identifiers to include.
+        List of source identifiers to include (e.g., ['source_1', 'source_2']).
+        Must match values in the Metadata_Source column.
     plate_types : list[str]
-        List of plate types to include.
+        List of plate types to include (e.g., ['ORF', 'CRISPR', 'TARGET2']).
+        Must match values in the Metadata_PlateType column.
 
     Returns
     -------
     pd.DataFrame
-        Merged metadata DataFrame containing both plate and well information,
-        filtered according to the specified sources and plate types.
+        Filtered plate metadata containing columns Metadata_Source, Metadata_Plate,
+        Metadata_PlateType, and Metadata_Batch.
+
+    Raises
+    ------
+    ValueError
+        If any required columns are missing from the plate metadata file.
+
+    Notes
+    -----
+    Special filtering rules:
+    - For ORF plates: Excludes plates in the redlist from get_orf_plate_redlist()
+    - For source_3: Excludes batches in SOURCE3_BATCH_REDLIST unless plate type is TARGET2
     """
-    plate = get_plate_metadata(sources, plate_types)
-    well = get_well_metadata(plate_types)
-    meta = well.merge(plate, on=["Metadata_Source", "Metadata_Plate"])
-    return meta
+    plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
+
+    required_cols = [
+        "Metadata_Source",
+        "Metadata_Plate",
+        "Metadata_PlateType",
+        "Metadata_Batch",
+    ]
+    missing_cols = [col for col in required_cols if col not in plate_metadata.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns in plate metadata: {missing_cols}")
+
+    # Filter plates from source_4
+    if "ORF" in plate_types:
+        redlist = get_orf_plate_redlist(plate_types)
+        plate_metadata = plate_metadata[~plate_metadata["Metadata_Plate"].isin(redlist)]
+
+    # Filter plates from source_3 batches without DMSO
+    plate_metadata = plate_metadata[
+        (~plate_metadata["Metadata_Batch"].isin(SOURCE3_BATCH_REDLIST))
+        | (plate_metadata["Metadata_PlateType"] == "TARGET2")
+    ]
+
+    plate_metadata = plate_metadata[plate_metadata["Metadata_Source"].isin(sources)]
+    plate_metadata = plate_metadata[
+        plate_metadata["Metadata_PlateType"].isin(plate_types)
+    ]
+    return plate_metadata
+
+
+def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
+    """Load and process well-level metadata with optional ORF/CRISPR annotations.
+
+    Loads well metadata from './inputs/metadata/well.csv.gz' and optionally merges with
+    ORF or CRISPR specific metadata based on plate types.
+
+    Parameters
+    ----------
+    plate_types : list[str]
+        List of plate types to process (e.g., ['ORF', 'CRISPR', 'TARGET2']).
+        If 'ORF' is included, merges with ORF metadata from './inputs/metadata/orf.csv.gz'.
+        If 'CRISPR' is included, merges with CRISPR metadata from './inputs/metadata/crispr.csv.gz'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Well metadata DataFrame containing at minimum:
+        - Metadata_JCP2022: JCP2022 identifier
+        Additional columns when ORF/CRISPR metadata is merged.
+        Excludes wells with JCP2022 codes: UNTREATED, UNKNOWN, BAD_CONSTRUCT.
+
+    Raises
+    ------
+    ValueError
+        If Metadata_JCP2022 column is missing from the well metadata file.
+
+    Notes
+    -----
+    The function performs left joins when merging ORF/CRISPR metadata, meaning wells
+    without matching ORF/CRISPR data will have NULL values in the merged columns.
+    """
+    well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
+
+    required_cols = ["Metadata_JCP2022"]
+    missing_cols = [col for col in required_cols if col not in well_metadata.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns in well metadata: {missing_cols}")
+
+    if "ORF" in plate_types:
+        orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")
+        well_metadata = well_metadata.merge(
+            orf_metadata, how="left", on="Metadata_JCP2022"
+        )
+        # well_metadata = well_metadata[well_metadata['Metadata_pert_type']!='poscon']
+    if "CRISPR" in plate_types:
+        crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
+        well_metadata = well_metadata.merge(
+            crispr_metadata, how="left", on="Metadata_JCP2022"
+        )
+    # Filter out wells
+
+    well_metadata = well_metadata[
+        ~well_metadata["Metadata_JCP2022"].isin([UNTREATED, UNKNOWN, BAD_CONSTRUCT])
+    ]
+
+    return well_metadata
 
 
 def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
@@ -163,38 +288,12 @@ def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
 
 
 # ------------------------------
-# Plate & Well Operations
+# Metadata Integration
 # ------------------------------
 
 
-def build_path(row: pd.Series) -> str:
-    """Create the path to the parquet file.
-
-    Parameters
-    ----------
-    row : pd.Series
-        Row containing metadata information with required fields:
-        Metadata_Source, Metadata_Batch, Metadata_Plate.
-
-    Returns
-    -------
-    str
-        Formatted path string to the parquet file.
-    """
-    required_cols = ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]
-    missing_cols = [col for col in required_cols if col not in row.index]
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
-
-    template = (
-        "./inputs/{Metadata_Source}/workspace/profiles/"
-        "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
-    )
-    return template.format(**row.to_dict())
-
-
-def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
-    """Create filtered metadata DataFrame.
+def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+    """Load and merge plate and well metadata.
 
     Parameters
     ----------
@@ -206,75 +305,10 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     Returns
     -------
     pd.DataFrame
-        Filtered plate metadata containing only specified sources and plate types,
-        with certain plates excluded based on redlist criteria.
+        Merged metadata DataFrame containing both plate and well information,
+        filtered according to the specified sources and plate types.
     """
-    plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
-
-    required_cols = [
-        "Metadata_Source",
-        "Metadata_Plate",
-        "Metadata_PlateType",
-        "Metadata_Batch",
-    ]
-    missing_cols = [col for col in required_cols if col not in plate_metadata.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns in plate metadata: {missing_cols}")
-
-    # Filter plates from source_4
-    if "ORF" in plate_types:
-        redlist = get_orf_plate_redlist(plate_types)
-        plate_metadata = plate_metadata[~plate_metadata["Metadata_Plate"].isin(redlist)]
-
-    # Filter plates from source_3 batches without DMSO
-    plate_metadata = plate_metadata[
-        (~plate_metadata["Metadata_Batch"].isin(SOURCE3_BATCH_REDLIST))
-        | (plate_metadata["Metadata_PlateType"] == "TARGET2")
-    ]
-
-    plate_metadata = plate_metadata[plate_metadata["Metadata_Source"].isin(sources)]
-    plate_metadata = plate_metadata[
-        plate_metadata["Metadata_PlateType"].isin(plate_types)
-    ]
-    return plate_metadata
-
-
-def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
-    """Load well metadata.
-
-    Parameters
-    ----------
-    plate_types : list[str]
-        List of plate types to process. Special handling for 'ORF' and 'CRISPR' types.
-
-    Returns
-    -------
-    pd.DataFrame
-        Well metadata DataFrame, optionally merged with ORF or CRISPR metadata
-        depending on plate_types. Excludes certain predefined JCP2022 codes.
-    """
-    well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
-
-    required_cols = ["Metadata_JCP2022"]
-    missing_cols = [col for col in required_cols if col not in well_metadata.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns in well metadata: {missing_cols}")
-
-    if "ORF" in plate_types:
-        orf_metadata = pd.read_csv("./inputs/metadata/orf.csv.gz")
-        well_metadata = well_metadata.merge(
-            orf_metadata, how="left", on="Metadata_JCP2022"
-        )
-        # well_metadata = well_metadata[well_metadata['Metadata_pert_type']!='poscon']
-    if "CRISPR" in plate_types:
-        crispr_metadata = pd.read_csv("./inputs/metadata/crispr.csv.gz")
-        well_metadata = well_metadata.merge(
-            crispr_metadata, how="left", on="Metadata_JCP2022"
-        )
-    # Filter out wells
-
-    well_metadata = well_metadata[
-        ~well_metadata["Metadata_JCP2022"].isin([UNTREATED, UNKNOWN, BAD_CONSTRUCT])
-    ]
-
-    return well_metadata
+    plate = get_plate_metadata(sources, plate_types)
+    well = get_well_metadata(plate_types)
+    meta = well.merge(plate, on=["Metadata_Source", "Metadata_Plate"])
+    return meta
