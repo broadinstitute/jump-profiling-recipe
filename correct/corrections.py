@@ -169,6 +169,7 @@ def annotate_gene(df, df_meta):
         If required columns are missing in df_meta
         If merge results in data loss
     """
+    logger.info(f"Starting gene annotation for dataframe with {len(df)} rows")
     # Check required columns exist in metadata
     required_cols = ["Metadata_JCP2022", "Metadata_Symbol"]
     if not all(col in df_meta.columns for col in required_cols):
@@ -331,12 +332,15 @@ def annotate_dataframe(
         and chromosome location information
     """
     df = pd.read_parquet(df_path)
+    logger.info(f"Starting annotation for dataframe with {len(df)} rows")
+
     df_gene = pd.read_csv(df_gene_path)
     df_chrom = pd.read_csv(df_chrom_path, sep="\t", dtype=str)
 
     df = drop_features_with_na(df)
     df = annotate_gene(df, df_gene)
     df = annotate_chromosome(df, df_chrom)
+    logger.info(f"Annotation complete. Saving to {output_path}")
     df.to_parquet(output_path)
 
 
@@ -362,6 +366,7 @@ def subtract_well_mean(input_path: str, output_path: str):
     """
     df = pd.read_parquet(input_path)
     df = drop_rows_with_na_features(df)
+    logger.info(f"Subtracting well means for {len(df)} profiles")
 
     feature_cols = get_feature_cols(df)
     mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
@@ -388,10 +393,10 @@ def transform_data(input_path: str, output_path: str, variance=0.98):
         and original metadata columns
     """
     df = pd.read_parquet(input_path)
+    logger.info(f"Applying PCA ({variance} variance) to {len(df)} profiles")
 
     metadata = df[get_meta_cols(df)]
     features = df[get_feature_cols(df)]
-
     features = pd.DataFrame(PCA(variance).fit_transform(features))
 
     df_new = pd.concat([metadata, features], axis=1)
@@ -427,9 +432,14 @@ def arm_correction(
     """
     df_exp = pd.read_csv(gene_expression_file)
     df = pd.read_parquet(crispr_profile_path)
+    logger.info(f"Starting arm correction for {len(df)} profiles")
+
     crispr_ix = df["Metadata_PlateType"] == "CRISPR"
     df_crispr = df[crispr_ix].copy()
     df = df[~crispr_ix].copy()
+
+    unexp_genes = df_exp[df_exp["zfpkm"] < -3]["gene"].unique()
+    logger.info(f"Found {len(unexp_genes)} unexpressed genes for background correction")
 
     df_no_arm = df_crispr[df_crispr["Metadata_Chromosome"].isna()].reset_index(
         drop=True
@@ -445,7 +455,6 @@ def arm_correction(
     )
     df_exp = df_exp.dropna(subset="Metadata_arm")
 
-    unexp_genes = df_exp[df_exp["zfpkm"] < -3]["gene"].unique()
     arm_include = (
         df_exp[df_exp["zfpkm"] < -3].groupby("Metadata_arm")["gene"].nunique() > 20
     )
@@ -495,6 +504,14 @@ def merge_cell_counts(df, cc_path):
     pandas.DataFrame
         Merged dataframe with cell count information
     """
+    # Validate input dataframe columns
+    required_columns = ["Metadata_Well", "Metadata_Plate"]
+    if not all(column in df.columns for column in required_columns):
+        missing_columns = [
+            column for column in required_columns if column not in df.columns
+        ]
+        raise ValueError(f"Missing required columns in df: {missing_columns}")
+
     df_cc = pd.read_csv(
         cc_path,
         low_memory=False,
@@ -505,12 +522,29 @@ def merge_cell_counts(df, cc_path):
         },
     )
     df_cc.rename(columns={"Metadata_Count_Cells": "Cells_Count_Count"}, inplace=True)
-    df = df.merge(
+
+    # Validate cell count dataframe columns
+    required_columns_cc = ["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"]
+    if not all(column in df_cc.columns for column in required_columns_cc):
+        missing_columns_cc = [
+            column for column in required_columns_cc if column not in df_cc.columns
+        ]
+        raise ValueError(f"Missing required columns in df_cc: {missing_columns_cc}")
+
+    merged_df = df.merge(
         df_cc[["Metadata_Well", "Metadata_Plate", "Cells_Count_Count"]],
         on=["Metadata_Well", "Metadata_Plate"],
         how="left",
     ).reset_index(drop=True)
-    return df
+
+    # Check for null values after merge
+    null_count = merged_df["Cells_Count_Count"].isnull().sum()
+    if null_count > 0:
+        logger.warning(
+            f"Merge resulted in {null_count} null values in Cells_Count_Count ({null_count / len(merged_df):.1%} of rows)"
+        )
+
+    return merged_df
 
 
 def regress_out_cell_counts_parallel(
