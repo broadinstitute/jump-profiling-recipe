@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import logging
 from preprocessing import io
-from preprocessing.utils import validate_columns
 
 logger = logging.getLogger(__name__)
 
