@@ -294,8 +294,8 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         path, start, end = params
         df = pd.read_parquet(path)
 
-        meta[int(start):int(end)] = df[meta_cols].values
-        feats[int(start):int(end)] = df[feat_cols].values
+        meta[int(start) : int(end)] = df[meta_cols].values
+        feats[int(start) : int(end)] = df[feat_cols].values
 
     params = np.concatenate([paths[:, None], slices], axis=1)
     thread_map(read_parquet, params)
