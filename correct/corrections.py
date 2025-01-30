@@ -203,20 +203,41 @@ def annotate_gene(df, df_meta):
 
 
 def annotate_chromosome(df, df_meta):
-    """Annotate dataframe with chromosome information.
+    """Annotate dataframe with chromosome location information.
+
+    Merges chromosome location data and adds/modifies columns:
+    - Metadata_Locus: Added if not present via metadata merge
+    - Metadata_arm: Derived from Metadata_Locus
+    - Metadata_Chromosome: Standardized if present (e.g., "12 alternate reference locus" -> "12")
 
     Parameters
     ----------
     df : pandas.DataFrame
-        Input dataframe
+        Input dataframe containing Metadata_Symbol column
     df_meta : pandas.DataFrame
-        Metadata dataframe containing chromosome information
+        Metadata dataframe with Approved_symbol and chromosome location information
 
     Returns
     -------
     pandas.DataFrame
         Annotated dataframe with chromosome information
+
+    Raises
+    ------
+    ValueError
+        If required columns are missing in df_meta
+        If merge results in data loss
     """
+    logger.info(f"Starting chromosome annotation for dataframe with {len(df)} rows")
+
+    # Check required columns exist in both dataframes
+    if "Metadata_Symbol" not in df.columns:
+        raise ValueError("Missing required column 'Metadata_Symbol' in df")
+
+    required_cols = ["Approved_symbol"]
+    if not all(col in df_meta.columns for col in required_cols):
+        missing = [col for col in required_cols if col not in df_meta.columns]
+        raise ValueError(f"Missing required columns in df_meta: {missing}")
 
     def split_arm(locus):
         return (
@@ -228,6 +249,12 @@ def annotate_chromosome(df, df_meta):
         )
 
     if "Metadata_Locus" not in df.columns:
+        logger.info("Adding Metadata_Locus via metadata merge")
+
+        # Store original row count
+        original_rows = len(df)
+
+        # Prepare metadata
         df_meta_copy = df_meta.drop_duplicates(subset=["Approved_symbol"]).reset_index(
             drop=True
         )
@@ -236,6 +263,7 @@ def annotate_chromosome(df, df_meta):
             for col in df_meta_copy.columns
         ]
 
+        # Perform merge
         df = df.merge(
             df_meta_copy,
             how="left",
@@ -243,14 +271,37 @@ def annotate_chromosome(df, df_meta):
             right_on="Metadata_Approved_symbol",
         ).reset_index(drop=True)
 
-    if "Metadata_arm" not in df.columns:
-        df["Metadata_arm"] = df["Metadata_Locus"].apply(lambda x: split_arm(str(x)))
+        # Check for data loss
+        if len(df) != original_rows:
+            raise ValueError(
+                f"Merge resulted in row count change: {original_rows} -> {len(df)}"
+            )
 
-    if "Metadata_Chromosome" not in df.columns:
+        # Check for unexpected null values after merge
+        null_count = df["Metadata_Locus"].isnull().sum()
+        if null_count > 0:
+            logger.warning(
+                f"Merge resulted in {null_count} null values in Metadata_Locus ({null_count / len(df):.1%} of rows)"
+            )
+
+    # Only create arm if we have locus information
+    if "Metadata_arm" not in df.columns:
+        logger.info("Deriving Metadata_arm from Metadata_Locus")
+        df["Metadata_arm"] = df["Metadata_Locus"].apply(lambda x: split_arm(str(x)))
+        null_arms = df["Metadata_arm"].isnull().sum()
+        if null_arms > 0:
+            logger.warning(
+                f"Arm splitting resulted in {null_arms} null values ({null_arms / len(df):.1%} of rows)"
+            )
+
+    # Fix chromosome information from merge
+    if "Metadata_Chromosome" in df.columns:
+        logger.info("Standardizing Metadata_Chromosome values")
         df["Metadata_Chromosome"] = df["Metadata_Chromosome"].apply(
             lambda x: "12" if x == "12 alternate reference locus" else x
         )
 
+    logger.info("Chromosome annotation completed")
     return df
 
 
