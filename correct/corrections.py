@@ -335,8 +335,9 @@ def subtract_well_mean(input_path: str, output_path: str) -> None:
     logger.info(f"Subtracting well means for {len(df)} profiles")
 
     feature_cols = get_feature_columns(df)
-    mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean").values
-    df[feature_cols] = df[feature_cols].values - mean_
+    # Use pandas nan-aware operations instead of raw numpy
+    mean_ = df.groupby("Metadata_Well")[feature_cols].transform("mean")
+    df[feature_cols] = df[feature_cols].sub(mean_)
     df.to_parquet(output_path, index=False)
 
 
