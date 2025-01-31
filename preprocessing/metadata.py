@@ -16,6 +16,7 @@ from collections.abc import Iterable
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # ------------------------------
 # Constants & Configuration

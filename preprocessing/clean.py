@@ -12,6 +12,7 @@ from .metadata import get_feature_columns
 import logging
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def clip_features(dframe: pd.DataFrame, threshold: float) -> pd.DataFrame:

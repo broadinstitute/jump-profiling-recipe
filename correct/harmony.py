@@ -7,6 +7,7 @@ from harmonypy import run_harmony
 from preprocessing import io
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def apply_harmony_correction(dframe_path, batch_key, output_path):

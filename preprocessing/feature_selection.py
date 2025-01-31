@@ -8,6 +8,7 @@ from pycytominer.operations import correlation_threshold, variance_threshold
 from .metadata import get_feature_columns
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def select_features(

@@ -19,6 +19,7 @@ from .io import merge_parquet, validate_columns
 from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # ------------------------------
 # DataFrame Feature & Statistics Operations

@@ -9,6 +9,7 @@ import logging
 from preprocessing import io
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def merge_dataframe(

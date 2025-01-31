@@ -26,6 +26,7 @@ from .metadata import (
 from .utils import validate_columns
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # ------------------------------
 # Data Validation

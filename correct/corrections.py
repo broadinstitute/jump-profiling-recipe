@@ -25,7 +25,7 @@ from preprocessing.utils import validate_columns as validate_columns
 from preprocessing.metadata import get_feature_columns, get_metadata_columns
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 
 
 # ------------------------------
