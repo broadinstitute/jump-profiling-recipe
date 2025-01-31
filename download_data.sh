@@ -22,11 +22,9 @@ readarray -t sources < <(jq -r '.sources[]' "$configfile")
 mkdir -p inputs/metadata
 for source_id in "${sources[@]}";
 do
-    # shellcheck disable=SC2086
-    aws s3 sync --no-sign-request "$BASEPATH/$source_id/workspace/profiles" inputs/${source_id}/workspace/profiles
+    aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/${source_id}/workspace/profiles
 done
 
-wget https://github.com/jump-cellpainting/datasets/blob/main/metadata/plate.csv.gz?raw=true -O inputs/metadata/plate.csv.gz
-wget https://github.com/jump-cellpainting/datasets/blob/main/metadata/well.csv.gz?raw=true -O inputs/metadata/well.csv.gz
-# shellcheck disable=SC2086
-wget https://github.com/jump-cellpainting/datasets/blob/main/metadata/$pert.csv.gz?raw=true -O inputs/metadata/${pert}.csv.gz
+wget https://raw.githubusercontent.com/jump-cellpainting/datasets/refs/tags/v0.9.0/metadata/plate.csv.gz -O inputs/metadata/plate.csv.gz
+wget https://raw.githubusercontent.com/jump-cellpainting/datasets/refs/tags/v0.9.0/metadata/well.csv.gz -O inputs/metadata/well.csv.gz
+wget https://raw.githubusercontent.com/jump-cellpainting/datasets/refs/tags/v0.9.0/metadata/${pert}.csv.gz -O inputs/metadata/${pert}.csv.gz
