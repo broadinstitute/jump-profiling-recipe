@@ -161,5 +161,10 @@ rule harmony:
         "outputs/{scenario}/{pipeline}_harmony.parquet",
     params:
         batch_key=config["batch_key"],
+        thread_config = {
+            "OPENBLAS_NUM_THREADS": "128",
+            "OMP_NUM_THREADS": "8",
+            "MKL_NUM_THREADS": "8",
+        },
     run:
         correct.apply_harmony_correction(*input, *params, *output)
