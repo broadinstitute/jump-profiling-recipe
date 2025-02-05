@@ -88,7 +88,7 @@ def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
     """
     org_shape = ann_dframe.shape[0]
     ann_dframe_clean = ann_dframe[
-        ~ann_dframe[get_feature_columns(ann_dframe)].isnull().T.any()
+        ~ann_dframe[get_feature_columns(ann_dframe)].isnull().any(axis=1)
     ]
     ann_dframe_clean.reset_index(drop=True, inplace=True)
     if org_shape - ann_dframe_clean.shape[0] < 100:
