@@ -1,15 +1,36 @@
-"""Casting column types and standardize column names in profiles for public release"""
+"""
+Functions for formatting profiles for public release
+"""
 
 import os
 import pandas as pd
 import numpy as np
+import logging
 from preprocessing import io
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-def merge_parquet(
+
+def merge_dataframe(
     meta: pd.DataFrame, vals: np.ndarray, features: list[str]
 ) -> pd.DataFrame:
-    """Save the data in a parquet file resetting the index"""
+    """Merge metadata and feature values into a single DataFrame.
+
+    Parameters
+    ----------
+    meta : pd.DataFrame
+        DataFrame containing metadata columns
+    vals : np.ndarray
+        Array containing feature values
+    features : list[str]
+        List of feature column names
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame with metadata and feature columns
+    """
     dframe = pd.DataFrame(vals, columns=features)
     for c in meta:
         dframe[c] = meta[c].reset_index(drop=True)
@@ -19,8 +40,19 @@ def merge_parquet(
 
 
 def restrict_column_type(input_path: str, meta_col_new=None) -> pd.DataFrame:
-    """
-    Casting all metadata columns to string and feature columns to float32
+    """Cast metadata columns to string and feature columns to float32.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input parquet file
+    meta_col_new : list[str], optional
+        List of metadata columns to keep, by default None which uses predefined columns
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with properly typed columns
     """
     meta, feat_val, feat_col = io.split_parquet(input_path)
     if meta_col_new is None:
@@ -35,13 +67,24 @@ def restrict_column_type(input_path: str, meta_col_new=None) -> pd.DataFrame:
         meta[c] = meta[c].astype("string")
     feat_val = feat_val.astype("float32")
     feat_col = [str(c) for c in feat_col]
-    dframe = merge_parquet(meta, feat_val, feat_col)
+    dframe = merge_dataframe(meta, feat_val, feat_col)
     return dframe
 
 
 def standardize_col_names(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Standardize feature names for PCA or harmony transformed profiless
+    """Standardize feature names for PCA or harmony transformed profiles.
+
+    Renames feature columns to X_1, X_2, etc., while preserving metadata columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with feature columns to be renamed
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with standardized feature column names
     """
     feat_col = [col for col in df.columns if "Metadata" not in col]
     feat_col_rename = ["X_" + str(i + 1) for i in range(len(feat_col))]
@@ -51,11 +94,32 @@ def standardize_col_names(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_format_check(profile_dir: str):
+    """Process profile files to ensure consistent data types and column names.
+
+    Reads parquet files from the input directory that contain 'profiles' in their name,
+    applies type restrictions to metadata and feature columns, and optionally standardizes
+    feature column names for PCA/harmony files. Processed files are saved to a new directory
+    named '{scenario}_public/'.
+
+    Parameters
+    ----------
+    profile_dir : str
+        Directory containing profile parquet files to process. The directory name is used
+        to create the output directory path.
+
+    Notes
+    -----
+    - Creates an output directory at 'outputs/{scenario}_public/' if it doesn't exist
+    - Only processes files with '.parquet' extension and 'profiles' in the filename
+    - For files containing 'harmony' or 'PCA' in their name, feature columns are
+      renamed to X_1, X_2, etc.
     """
-    Ensure profiles have expected data types and column names
-    """
+    logger.info(f"Starting profile format check for directory: {profile_dir}")
+
     files = os.listdir(profile_dir)
     files = [file for file in files if (".parquet" in file) and ("profiles" in file)]
+    logger.info(f"Found {len(files)} profile files to process")
+
     output_dir = (
         "outputs/" + profile_dir.split("/")[1] + "_public/"
     )  # Save new profiles to new folder "{scenario}_public/"
@@ -70,3 +134,5 @@ def run_format_check(profile_dir: str):
         if ("harmony" in file) or ("PCA" in file):
             df = standardize_col_names(df)
         df.to_parquet(file_output_path)
+
+    logger.info("Profile format check completed successfully")

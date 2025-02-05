@@ -1,18 +1,48 @@
-"""Correction methods"""
+"""
+Functions for batch correction
+"""
 
+import os
 import logging
-
 from harmonypy import run_harmony
-
 from preprocessing import io
 
-# logging.basicConfig(format='%(levelname)s:%(asctime)s:%(name)s:%(message)s', level=logging.WARN)
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.WARN)
+logger.setLevel(logging.INFO)
 
 
-def harmony(dframe_path, batch_key, output_path):
-    """Harmony correction"""
+def apply_harmony_correction(dframe_path, batch_key, thread_config, output_path):
+    """Perform Harmony batch correction on feature data.
+
+    Parameters
+    ----------
+    dframe_path : str
+        Path to the input parquet file containing metadata and features.
+    batch_key : str
+        Column name in metadata that identifies the batch information.
+    output_path : str
+        Path where the corrected data will be saved as a parquet file.
+    thread_config : dict
+        Dictionary containing thread settings for OpenBLAS, OMP, and MKL.
+
+    Returns
+    -------
+    None
+        The corrected data is saved to the specified output path.
+
+    Notes
+    -----
+    The function performs the following steps:
+    1. Splits input parquet into metadata and features
+    2. Removes unused categories from batch information
+    3. Applies Harmony correction with 300 clusters and 20 iterations
+    4. Saves the corrected features with original metadata to output path
+    """
+
+    # Apply thread settings
+    for var, val in thread_config.items():
+        os.environ[var] = str(val)
+
     meta, feats, features = io.split_parquet(dframe_path)
 
     # Remove unused categories to avoid matmul dimension mismatch
