@@ -26,9 +26,6 @@ def main():
     source_files = [
         "inputs/source_13/workspace/profiles/20220914_Run1/CP-CC9-R1-04/CP-CC9-R1-04.parquet",
         "inputs/source_13/workspace/profiles/20221009_Run2/CP-CC9-R2-04/CP-CC9-R2-04.parquet",
-        "inputs/source_13/workspace/profiles/20221017_Run3/CP-CC9-R3-04/CP-CC9-R3-04.parquet",
-        "inputs/source_13/workspace/profiles/20221024_Run4/CP-CC9-R4-04/CP-CC9-R4-04.parquet",
-        "inputs/source_13/workspace/profiles/20221109_Run5/CP-CC9-R5-04/CP-CC9-R5-04.parquet",
     ]
 
     # Convert source paths to absolute paths

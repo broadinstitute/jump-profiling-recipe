@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 from snakemake import snakemake
 import pytest
+import pandas as pd
 
 # Ensure the repository root is on PYTHONPATH so that modules like 'correct' can be found
 repo_root = Path(__file__).parent.parent.absolute()
@@ -60,7 +61,7 @@ def test_workspace(tmp_path):
 def test_full_pipeline(test_workspace):
     """
     An integration test that runs the Snakemake pipeline using the provided configuration
-    and checks that the final output file exists.
+    and checks that the final output files exist and match expected values.
     """
     workspace = test_workspace
     snakefile = workspace / "Snakefile"
@@ -78,4 +79,15 @@ def test_full_pipeline(test_workspace):
 
     # Verify that the final target from the 'all' rule exists.
     done_file = workspace / "outputs" / "crispr_trimmed" / "reformat.done"
-    assert done_file.exists(), f"Expected output file {done_file} was not created" 
+    assert done_file.exists(), f"Expected output file {done_file} was not created"
+
+    # Verify that the corrected profiles parquet file exists and matches expected values
+    profiles_file = workspace / "outputs" / "crispr_trimmed" / "profiles_trimmed_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet"
+    assert profiles_file.exists(), f"Expected output file {profiles_file} was not created"
+    
+    # Load actual and expected parquet files
+    actual_df = pd.read_parquet(profiles_file)
+    expected_df = pd.read_parquet(Path(__file__).parent / "fixtures" / "outputs" / "crispr_trimmed_public" / "profiles_trimmed_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet")
+    
+    # Compare DataFrames
+    pd.testing.assert_frame_equal(actual_df, expected_df, check_dtype=True) 
