@@ -15,8 +15,11 @@ def filter_columns(df):
     Given a DataFrame, return a new DataFrame containing only columns that start
     with 'Metadata' or 'Cells_AreaShape_Zernike5'.
     """
-    filtered_cols = [col for col in df.columns 
-                     if col.startswith("Metadata") or col.startswith("Cells_AreaShape_Zernike_5")]
+    filtered_cols = [
+        col
+        for col in df.columns
+        if col.startswith("Metadata") or col.startswith("Cells_AreaShape_Zernike_5")
+    ]
     return df[filtered_cols]
 
 
@@ -50,7 +53,7 @@ def main():
         # Create the same relative path structure in the fixtures directory
         rel_path = os.path.relpath(src, os.path.join(repo_root, "inputs"))
         dest_file = os.path.join(repo_root, "tests", "fixtures", "inputs", rel_path)
-        
+
         # Create the destination directory if it doesn't exist
         os.makedirs(os.path.dirname(dest_file), exist_ok=True)
 
