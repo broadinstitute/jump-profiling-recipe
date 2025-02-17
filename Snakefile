@@ -34,8 +34,8 @@ rule write_parquet_trimmed:
         pp.io.write_parquet(
             sources=config["sources"],
             plate_types=config["plate_types"],
-            output_file=*output,
-            feature_pattern="Cells_AreaShape",
+            output_file=output[0],
+            feature_pattern="Cells_AreaShape_Zernike_5",
             plates=config.get("plates_trimmed", None)
         )
 
@@ -44,9 +44,9 @@ rule write_parquet:
         "outputs/{scenario}/profiles.parquet",
     run:
         pp.io.write_parquet(
-            sources=config["sources"],
-            plate_types=config["plate_types"],
-            output_file=*output,
+            config["sources"],
+            config["plate_types"],
+            output[0],
         )
 
 

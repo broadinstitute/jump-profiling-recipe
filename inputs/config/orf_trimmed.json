@@ -1,5 +1,5 @@
 {
-    "scenario": "orf",
+    "scenario": "orf_trimmed",
     "pipeline": "profiles_trimmed_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
     "keep_image_features": false,
     "use_mad_negcon": false,
@@ -10,12 +10,13 @@
         "ORF"
     ],
     "plates_trimmed": [
-        "BR00121438",
-        "BR00121439"
+        "BR00124781",
+        "BR00124782",
+        "BR00126062"
     ],
-    "batch_key": "Metadata_Batch",
+    "batch_key": "Metadata_Plate",
     "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
-    "sphering_n_opts": 25,
+    "sphering_n_opts": 3,
     "cc_path": "inputs/cell_counts/orf_cell_counts.csv.gz"
 }
