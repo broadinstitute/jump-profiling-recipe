@@ -3,6 +3,7 @@
 *png
 *svg
 *gz
+!tests/fixtures/inputs/metadata/*.gz
 *html
 .ipynb_checkpoints
 .DS_Store
@@ -18,3 +19,4 @@ __pycache__
 .venv
 .devenv
 *pdf
+
