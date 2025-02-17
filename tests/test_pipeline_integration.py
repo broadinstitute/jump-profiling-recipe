@@ -21,7 +21,7 @@ def test_workspace(tmp_path):
     fixtures_dir = Path(__file__).parent / "fixtures"
 
     # Copy entire input and output folders from fixtures
-    for folder in ['inputs', 'outputs']:
+    for folder in ["inputs", "outputs"]:
         src = fixtures_dir / folder
         dst = workspace / folder
         if src.exists():
@@ -65,15 +65,17 @@ def test_full_pipeline(test_workspace):
     def compare_dataframes(actual_df, expected_df, filename, allow_approximate):
         """Helper function to compare DataFrames with detailed reporting"""
         # First compare metadata columns
-        metadata_cols = [col for col in actual_df.columns if col.startswith("Metadata_")]
+        metadata_cols = [
+            col for col in actual_df.columns if col.startswith("Metadata_")
+        ]
         try:
             pd.testing.assert_frame_equal(
-                actual_df[metadata_cols], 
-                expected_df[metadata_cols], 
-                check_dtype=True
+                actual_df[metadata_cols], expected_df[metadata_cols], check_dtype=True
             )
         except AssertionError as e:
-            raise AssertionError(f"Metadata columns don't match in {filename}:\n{str(e)}")
+            raise AssertionError(
+                f"Metadata columns don't match in {filename}:\n{str(e)}"
+            )
 
         # Then compare numerical columns with or without tolerance based on allow_approximate
         numerical_cols = [col for col in actual_df.columns if col not in metadata_cols]
@@ -83,23 +85,35 @@ def test_full_pipeline(test_workspace):
                 expected_df[numerical_cols],
                 rtol=1e-5 if allow_approximate else 0,  # Only use tolerance if allowed
                 atol=1e-5 if allow_approximate else 0,  # Only use tolerance if allowed
-                check_dtype=False  # Allow float32/float64 differences
+                check_dtype=False,  # Allow float32/float64 differences
             )
         except AssertionError as e:
-            raise AssertionError(f"Numerical columns don't match in {filename}:\n{str(e)}")
+            raise AssertionError(
+                f"Numerical columns don't match in {filename}:\n{str(e)}"
+            )
 
     for parquet_filename, allow_approximate in expected_parquet_files.items():
-        profiles_file = workspace / "outputs" / "crispr_trimmed_public" / parquet_filename
-        assert profiles_file.exists(), f"Expected output file {profiles_file} was not created"
+        profiles_file = (
+            workspace / "outputs" / "crispr_trimmed_public" / parquet_filename
+        )
+        assert profiles_file.exists(), (
+            f"Expected output file {profiles_file} was not created"
+        )
 
         actual_df = pd.read_parquet(profiles_file)
         expected_file_path = (
-            Path(__file__).parent / "fixtures" / "outputs" / "crispr_trimmed_public" / parquet_filename
+            Path(__file__).parent
+            / "fixtures"
+            / "outputs"
+            / "crispr_trimmed_public"
+            / parquet_filename
         )
         expected_df = pd.read_parquet(expected_file_path)
 
         try:
-            compare_dataframes(actual_df, expected_df, parquet_filename, allow_approximate)
+            compare_dataframes(
+                actual_df, expected_df, parquet_filename, allow_approximate
+            )
         except AssertionError as e:
             # Get differences in column names if any
             actual_cols = set(actual_df.columns)
