@@ -4,6 +4,7 @@
 *svg
 *gz
 !tests/fixtures/inputs/metadata/*.gz
+!tests/fixtures/inputs/cell_counts/*.gz
 *html
 .ipynb_checkpoints
 .DS_Store
