@@ -27,6 +27,17 @@ rule reformat:
         correct.format_check.run_format_check(params.profile_dir)
 
 
+rule write_parquet_trimmed:
+    output:
+        "outputs/{scenario}/profiles_trimmed.parquet",
+    run:
+        pp.io.write_parquet(
+            config["sources"],
+            config["plate_types"],
+            *output,
+            feature_pattern="Cells_AreaShape_Zernike"
+        )
+
 rule write_parquet:
     output:
         "outputs/{scenario}/profiles.parquet",

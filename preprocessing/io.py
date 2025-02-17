@@ -267,7 +267,11 @@ def prealloc_params(
     return paths, slices
 
 
-def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def load_data(
+    sources: list[str], 
+    plate_types: list[str],
+    feature_pattern: str | None = None
+) -> pd.DataFrame:
     """Load all plates given the parameters.
 
     Parameters
@@ -276,6 +280,8 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         List of data sources
     plate_types : list[str]
         List of plate types
+    feature_pattern : str | None, optional
+        If provided, only load features matching this pattern (e.g., 'Cells_AreaShape')
 
     Returns
     -------
@@ -288,6 +294,9 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     with pq.ParquetFile(paths[0]) as f:
         meta_cols = get_metadata_columns(f.schema.names)
         feat_cols = get_feature_columns(f.schema.names)
+        if feature_pattern:
+            feat_cols = [col for col in feat_cols if col.startswith(feature_pattern)]
+
     meta = np.empty([total, len(meta_cols)], dtype="|S128")
     feats = np.empty([total, len(feat_cols)], dtype=np.float32)
 
@@ -308,16 +317,13 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     return dframe
 
 
-def write_parquet(sources: list[str], plate_types: list[str], output_file: str) -> None:
+def write_parquet(
+    sources: list[str], 
+    plate_types: list[str], 
+    output_file: str,
+    feature_pattern: str | None = None
+) -> None:
     """Write a combined and preprocessed parquet dataset from multiple source plates.
-
-    This function:
-    1. Loads and combines data from multiple plates
-    2. Removes Image_ features
-    3. Adds metadata annotations (perturbation type, row/column info, microscopy info)
-    4. Filters out samples with missing JCP2022 metadata
-    5. Converts metadata columns to categorical type
-    6. Writes the final DataFrame to a single parquet file
 
     Parameters
     ----------
@@ -327,12 +333,15 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
         List of plate types
     output_file : str
         Path where to save the output parquet file
+    feature_pattern : str | None, optional
+        If provided, only save features matching this pattern (e.g., 'Cells_AreaShape')
     """
-    dframe = load_data(sources, plate_types)
+    dframe = load_data(sources, plate_types, feature_pattern)
 
-    # Drop Image features
-    image_col = [col for col in dframe.columns if "Image_" in col]
-    dframe.drop(image_col, axis=1, inplace=True)
+    # Drop Image features only if we're not using a specific feature pattern
+    if feature_pattern is None:
+        image_col = [col for col in dframe.columns if "Image_" in col]
+        dframe.drop(image_col, axis=1, inplace=True)
 
     # Get metadata
     meta = load_metadata(sources, plate_types)
