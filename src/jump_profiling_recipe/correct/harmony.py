@@ -5,7 +5,7 @@ Functions for batch correction
 import os
 import logging
 from harmonypy import run_harmony
-from preprocessing import io
+from ..preprocessing import io
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

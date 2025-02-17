@@ -3,6 +3,8 @@
 *png
 *svg
 *gz
+!src/tests/fixtures/inputs/metadata/*.gz
+!src/tests/fixtures/inputs/cell_counts/*.gz
 !tests/fixtures/inputs/metadata/*.gz
 !tests/fixtures/inputs/cell_counts/*.gz
 *html
@@ -20,3 +22,4 @@ __pycache__
 .venv
 .devenv
 *pdf
+.coverage.*
