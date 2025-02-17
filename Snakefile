@@ -3,8 +3,8 @@ wildcard_constraints:
     scenario=r"[_a-zA-Z.~0-9\-]*",
 
 
-import correct
-import preprocessing as pp
+import jump_profiling_recipe.correct as correct
+import jump_profiling_recipe.preprocessing as pp
 
 
 include: "rules/sphering.smk"
@@ -34,7 +34,7 @@ rule write_parquet:
         pp.io.write_parquet(
             config["sources"],
             config["plate_types"],
-            *output,
+            output[0],
         )
 
 

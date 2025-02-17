@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = jump_profiling_recipe
+
+[report]
+precision = 2
+show_missing = True
