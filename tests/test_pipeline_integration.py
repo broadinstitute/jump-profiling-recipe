@@ -54,12 +54,12 @@ def test_full_pipeline(test_workspace):
     assert success, "Snakemake pipeline failed to complete"
 
     # Verify outputs
-    done_file = workspace / "outputs" / "crispr_trimmed" / "reformat.done"
+    done_file = workspace / "outputs" / "crispr" / "reformat.done"
     assert done_file.exists(), f"Expected output file {done_file} was not created"
 
     expected_parquet_files = {
-        "profiles_trimmed_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,  # Allow approximate comparison
-        "profiles_trimmed_wellpos_cc_var_mad_outlier_featselect.parquet": False,  # Require exact comparison
+        "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,  # Allow approximate comparison
+        "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,  # Require exact comparison
     }
 
     def compare_dataframes(actual_df, expected_df, filename, allow_approximate):
@@ -93,9 +93,7 @@ def test_full_pipeline(test_workspace):
             )
 
     for parquet_filename, allow_approximate in expected_parquet_files.items():
-        profiles_file = (
-            workspace / "outputs" / "crispr_trimmed_public" / parquet_filename
-        )
+        profiles_file = workspace / "outputs" / "crispr_public" / parquet_filename
         assert profiles_file.exists(), (
             f"Expected output file {profiles_file} was not created"
         )
@@ -105,7 +103,7 @@ def test_full_pipeline(test_workspace):
             Path(__file__).parent
             / "fixtures"
             / "outputs"
-            / "crispr_trimmed_public"
+            / "crispr_public"
             / parquet_filename
         )
         expected_df = pd.read_parquet(expected_file_path)
