@@ -9,10 +9,6 @@
     "plate_types": [
         "CRISPR"
     ],
-    "plates_trimmed": [
-        "CP-CC9-R1-04",
-        "CP-CC9-R2-04"
-    ],
     "batch_key": "Metadata_Plate",
     "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",

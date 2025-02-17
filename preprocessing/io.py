@@ -207,41 +207,36 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
 
 
 def prealloc_params(
-    sources: list[str], plate_types: list[str], plates: list[str] | None = None
+    sources: list[str], plate_types: list[str]
 ) -> tuple[np.ndarray, np.ndarray]:
     """Get paths to parquet files and corresponding slices for concatenation.
 
     This function:
-    1. Loads metadata for all specified sources and plate types.
-    2. Optionally filters to only include specified plates.
-    3. Builds paths to each unique parquet file.
-    4. Calculates slice indices for each file so that slices[i] contains [start, end]
-       for file i in the final array.
+    1. Loads metadata for all specified sources and plate types
+    2. Builds paths to each unique parquet file
+    3. Calculates slice indices for each file to enable efficient concatenation
+       where slices[i] contains [start, end] indices for file i in the final array
+
+    For example, if files have lengths [100, 150, 200]:
+    - slices will be [[0, 100], [100, 250], [250, 450]]
+    - indicating where each file's data should be placed in the final array
 
     Parameters
     ----------
     sources : list[str]
-        List of data sources.
+        List of data sources
     plate_types : list[str]
-        List of plate types.
-    plates : list[str] | None, optional
-        If provided, only files corresponding to these plates (based on Metadata_Plate)
-        will be processed.
+        List of plate types
 
     Returns
     -------
     paths : np.ndarray[str]
-        1D array of paths to parquet files.
+        1D array of paths to parquet files, one per unique plate
     slices : np.ndarray
-        2D array of slice indices with shape (n_files, 2).
+        2D array of slice indices with shape (n_files, 2), where each row is
+        [start_idx, end_idx] for positioning that file's data in the final array
     """
     meta = load_metadata(sources, plate_types)
-    # Filter metadata to only include specified plates if provided
-    if plates is not None:
-        meta = meta[meta["Metadata_Plate"].isin(plates)]
-        if meta.empty:
-            raise ValueError("No valid plates found with the given selection.")
-
     paths = (
         meta[["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]]
         .drop_duplicates()
@@ -272,39 +267,27 @@ def prealloc_params(
     return paths, slices
 
 
-def load_data(
-    sources: list[str],
-    plate_types: list[str],
-    feature_pattern: str | None = None,
-    plates: list[str] | None = None,
-) -> pd.DataFrame:
+def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     """Load all plates given the parameters.
 
     Parameters
     ----------
     sources : list[str]
-        List of data sources.
+        List of data sources
     plate_types : list[str]
-        List of plate types.
-    feature_pattern : str | None, optional
-        If provided, only load features matching this pattern (e.g., 'Cells_AreaShape')
-    plates : list[str] | None, optional
-        If provided, only load data for these plates
+        List of plate types
 
     Returns
     -------
     pd.DataFrame
-        Combined DataFrame containing all selected plates' data.
+        Combined DataFrame containing all plates' data
     """
-    paths, slices = prealloc_params(sources, plate_types, plates)
+    paths, slices = prealloc_params(sources, plate_types)
     total = slices[-1, 1]
 
     with pq.ParquetFile(paths[0]) as f:
         meta_cols = get_metadata_columns(f.schema.names)
         feat_cols = get_feature_columns(f.schema.names)
-        if feature_pattern:
-            feat_cols = [col for col in feat_cols if col.startswith(feature_pattern)]
-
     meta = np.empty([total, len(meta_cols)], dtype="|S128")
     feats = np.empty([total, len(feat_cols)], dtype=np.float32)
 
@@ -325,39 +308,34 @@ def load_data(
     return dframe
 
 
-def write_parquet(
-    sources: list[str],
-    plate_types: list[str],
-    output_file: str,
-    feature_pattern: str | None = None,
-    plates: list[str] | None = None,
-) -> None:
-    """Write a combined and preprocessed parquet dataset from selected source plates.
+def write_parquet(sources: list[str], plate_types: list[str], output_file: str) -> None:
+    """Write a combined and preprocessed parquet dataset from multiple source plates.
+
+    This function:
+    1. Loads and combines data from multiple plates
+    2. Removes Image_ features
+    3. Adds metadata annotations (perturbation type, row/column info, microscopy info)
+    4. Filters out samples with missing JCP2022 metadata
+    5. Converts metadata columns to categorical type
+    6. Writes the final DataFrame to a single parquet file
 
     Parameters
     ----------
     sources : list[str]
-        List of data sources.
+        List of data sources
     plate_types : list[str]
-        List of plate types.
+        List of plate types
     output_file : str
-        Path where to save the output parquet file.
-    feature_pattern : str | None, optional
-        If provided, only save features matching this pattern (e.g., 'Cells_AreaShape').
-    plates : list[str] | None, optional
-        If provided, only load and store data for the specified plates (based on Metadata_Plate).
+        Path where to save the output parquet file
     """
-    dframe = load_data(sources, plate_types, feature_pattern, plates)
+    dframe = load_data(sources, plate_types)
 
-    # Drop Image features only if we're not using a specific feature pattern.
-    if feature_pattern is None:
-        image_col = [col for col in dframe.columns if "Image_" in col]
-        dframe.drop(image_col, axis=1, inplace=True)
+    # Drop Image features
+    image_col = [col for col in dframe.columns if "Image_" in col]
+    dframe.drop(image_col, axis=1, inplace=True)
 
-    # Get metadata and filter on selected plates if necessary.
+    # Get metadata
     meta = load_metadata(sources, plate_types)
-    if plates is not None:
-        meta = meta[meta["Metadata_Plate"].isin(plates)]
     add_pert_type(meta)
     add_row_col(meta)
     add_microscopy_info(meta)
@@ -372,7 +350,7 @@ def write_parquet(
     foreign_key = ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]
     meta = dframe[foreign_key].merge(meta, on=foreign_key, how="left")
 
-    # Dropping samples with no metadata.
+    # Dropping samples with no metadata
     jcp_col = meta.pop("Metadata_JCP2022").astype("category")
     dframe["Metadata_JCP2022"] = jcp_col
     dframe.dropna(subset=["Metadata_JCP2022"], inplace=True)
