@@ -273,10 +273,10 @@ def prealloc_params(
 
 
 def load_data(
-    sources: list[str], 
+    sources: list[str],
     plate_types: list[str],
     feature_pattern: str | None = None,
-    plates: list[str] | None = None
+    plates: list[str] | None = None,
 ) -> pd.DataFrame:
     """Load all plates given the parameters.
 
@@ -326,11 +326,11 @@ def load_data(
 
 
 def write_parquet(
-    sources: list[str], 
-    plate_types: list[str], 
+    sources: list[str],
+    plate_types: list[str],
     output_file: str,
     feature_pattern: str | None = None,
-    plates: list[str] | None = None
+    plates: list[str] | None = None,
 ) -> None:
     """Write a combined and preprocessed parquet dataset from selected source plates.
 
