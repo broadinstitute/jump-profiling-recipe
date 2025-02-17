@@ -1,5 +1,4 @@
 .snakemake
-*parquet
 *h5ad
 *png
 *svg
@@ -8,8 +7,8 @@
 .ipynb_checkpoints
 .DS_Store
 __pycache__
-outputs
-inputs/source_*
+/outputs
+/inputs/source_*
 *plotly
 *csv
 *npz
