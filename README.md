@@ -5,13 +5,14 @@ for COMPOUND, CRISPR and ORF data from the JUMP dataset.
 
 ## Installation
 
-We suggest [Mamba](https://github.com/conda-forge/miniforge#mambaforge) for
-environment management. The following commands create the environment from
-scratch and install the required packages.
+We suggest [uv](https://docs.astral.sh/uv/) for environment management. The
+following commands create the environment from scratch and install the required
+packages.
 
 ```bash
-mamba env create --file environment.yaml
-mamba activate jump_recipe
+uv sync
+uv pip install -e .
+source .venv/bin/activate
 ```
 
 ## Get data

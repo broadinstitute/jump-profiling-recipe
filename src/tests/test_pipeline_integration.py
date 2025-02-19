@@ -1,9 +1,38 @@
-import sys
 import shutil
+import sys
 from pathlib import Path
-from snakemake import snakemake
-import pytest
+
 import pandas as pd
+import pytest
+from snakemake.api import (
+    ConfigSettings,
+    OutputSettings,
+    ResourceSettings,
+    SnakemakeApi,
+    StorageSettings,
+)
+
+
+def run_workflow(snakefile: Path, configfile: Path):
+    """Run programmatically a snakefile using the given config"""
+    resource = ResourceSettings(cores=1)
+    config = ConfigSettings(configfiles=[configfile])
+    with SnakemakeApi(
+        OutputSettings(
+            verbose=False,
+            show_failed_logs=True,
+        ),
+    ) as snakemake_api:
+        workflow_api = snakemake_api.workflow(
+            storage_settings=StorageSettings(),
+            resource_settings=resource,
+            config_settings=config,
+            snakefile=snakefile,
+            workdir=snakefile.parent,
+        )
+        dag_api = workflow_api.dag()
+        dag_api.execute_workflow()
+
 
 # Ensure the repository root is on PYTHONPATH so that modules like 'correct' can be found
 repo_root = Path(__file__).parent.parent.absolute()
@@ -43,15 +72,7 @@ def test_full_pipeline(test_workspace):
     configfile = workspace / "inputs" / "config" / "crispr_trimmed.json"
 
     # Run the pipeline
-    success = snakemake(
-        snakefile=str(snakefile),
-        configfiles=[str(configfile)],
-        cores=1,
-        workdir=str(workspace),
-        quiet=True,
-        latency_wait=10,
-    )
-    assert success, "Snakemake pipeline failed to complete"
+    run_workflow(snakefile, configfile)
 
     # Verify outputs
     done_file = workspace / "outputs" / "crispr" / "reformat.done"
