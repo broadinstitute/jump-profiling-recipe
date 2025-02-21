@@ -63,19 +63,24 @@ def test_workspace(tmp_path):
     return workspace
 
 
-def test_full_pipeline(test_workspace):
+@pytest.mark.parametrize("pipeline_name", ["crispr"])
+def test_full_pipeline(test_workspace, pipeline_name):
     """
     Integration test that runs the Snakemake pipeline and verifies outputs.
+
+    Args:
+        test_workspace: Pytest fixture providing the test workspace
+        pipeline_name: Name of the pipeline to test
     """
     workspace = test_workspace
     snakefile = workspace / "Snakefile"
-    configfile = workspace / "inputs" / "config" / "crispr_trimmed.json"
+    configfile = workspace / "inputs" / "config" / f"{pipeline_name}_trimmed.json"
 
     # Run the pipeline
     run_workflow(snakefile, configfile)
 
     # Verify outputs
-    done_file = workspace / "outputs" / "crispr" / "reformat.done"
+    done_file = workspace / "outputs" / pipeline_name / "reformat.done"
     assert done_file.exists(), f"Expected output file {done_file} was not created"
 
     expected_parquet_files = {
@@ -115,7 +120,9 @@ def test_full_pipeline(test_workspace):
             )
 
     for parquet_filename, allow_approximate in expected_parquet_files.items():
-        profiles_file = workspace / "outputs" / "crispr_public" / parquet_filename
+        profiles_file = (
+            workspace / "outputs" / f"{pipeline_name}_public" / parquet_filename
+        )
         assert profiles_file.exists(), (
             f"Expected output file {profiles_file} was not created"
         )
@@ -125,7 +132,7 @@ def test_full_pipeline(test_workspace):
             Path(__file__).parent
             / "fixtures"
             / "outputs"
-            / "crispr_public"
+            / f"{pipeline_name}_public"
             / parquet_filename
         )
         expected_df = pd.read_parquet(expected_file_path)
