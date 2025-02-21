@@ -17,8 +17,6 @@ def run_workflow(snakefile: Path, configfile: Path):
     """Run programmatically a snakefile using the given config"""
     resource = ResourceSettings(cores=1)
     config = ConfigSettings(configfiles=[configfile])
-    # config.overwrite_config["batch_key"] = "Metadata_Plate"
-    # config.overwrite_config["sphering_n_opts"] = 2
 
     with SnakemakeApi(
         OutputSettings(
