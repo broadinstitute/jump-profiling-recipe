@@ -33,6 +33,10 @@ def main():
     source_files = [
         "inputs/source_13/workspace/profiles/20220914_Run1/CP-CC9-R1-04/CP-CC9-R1-04.parquet",
         "inputs/source_13/workspace/profiles/20221009_Run2/CP-CC9-R2-04/CP-CC9-R2-04.parquet",
+        "inputs/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
+        "inputs/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
+        "inputs/source_9/workspace/profiles/20210914-Run9/GR00003301/GR00003301.parquet",
+        "inputs/source_9/workspace/profiles/20210914-Run9/GR00003302/GR00003302.parquet",
     ]
 
     # Convert source paths to absolute paths
