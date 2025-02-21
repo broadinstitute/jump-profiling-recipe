@@ -3,7 +3,7 @@ name = "jump-profiling-recipe"
 version = "0.3.0"
 description = "Workflow for processing cpg0016-jump profiles"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "copairs>=0.4.4",
     "harmonypy>=0.0.10",
@@ -13,7 +13,7 @@ dependencies = [
     "patsy>=1.0.1",
     "pyarrow>=19.0.1",
     "scikit-learn>=1.6.1",
-    "snakemake>=7.32.4",
+    "snakemake>=8.28.0",
     "statsmodels>=0.14.4",
     "tqdm>=4.67.1",
 ]
