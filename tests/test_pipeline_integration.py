@@ -61,7 +61,7 @@ def test_workspace(tmp_path):
 
     shutil.copy(root_dir / "Snakefile", workspace / "Snakefile")
     shutil.copytree(root_dir / "rules", workspace / "rules")
-    for subfolder in ["cell_counts", "config", "metadata"]:
+    for subfolder in ["cell_counts", "metadata"]:
         shutil.copytree(
             root_dir / "inputs" / subfolder, workspace / "inputs" / subfolder
         )
