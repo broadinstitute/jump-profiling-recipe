@@ -17,6 +17,9 @@ def run_workflow(snakefile: Path, configfile: Path):
     """Run programmatically a snakefile using the given config"""
     resource = ResourceSettings(cores=1)
     config = ConfigSettings(configfiles=[configfile])
+    # config.overwrite_config["batch_key"] = "Metadata_Plate"
+    # config.overwrite_config["sphering_n_opts"] = 2
+
     with SnakemakeApi(
         OutputSettings(
             verbose=False,
@@ -47,18 +50,21 @@ def test_workspace(tmp_path):
     """
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+
+    # Copy profiles directory
+    # TODO: Move the profiles to a subfolder of inputs then update paths below
     fixtures_dir = Path(__file__).parent / "fixtures"
+    shutil.copytree(fixtures_dir / "inputs", workspace / "inputs")
 
-    # Copy entire input and output folders from fixtures
-    for folder in ["inputs", "outputs"]:
-        src = fixtures_dir / folder
-        dst = workspace / folder
-        if src.exists():
-            shutil.copytree(src, dst)
+    # Copy Snakefile, rules, inputs
+    root_dir = Path(__file__).parent.parent
 
-    # Copy Snakefile and rules directory
-    shutil.copy(fixtures_dir / "Snakefile", workspace / "Snakefile")
-    shutil.copytree(fixtures_dir / "rules", workspace / "rules")
+    shutil.copy(root_dir / "Snakefile", workspace / "Snakefile")
+    shutil.copytree(root_dir / "rules", workspace / "rules")
+    for subfolder in ["cell_counts", "config", "metadata"]:
+        shutil.copytree(
+            root_dir / "inputs" / subfolder, workspace / "inputs" / subfolder
+        )
 
     return workspace
 
