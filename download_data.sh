@@ -23,4 +23,3 @@ for source_id in "${sources[@]}";
 do
     aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/${source_id}/workspace/profiles
 done
-
