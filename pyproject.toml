@@ -1,0 +1,32 @@
+[project]
+name = "jump-profiling-recipe"
+version = "0.3.0"
+description = "Workflow for processing cpg0016-jump profiles"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "copairs>=0.4.4",
+    "harmonypy>=0.0.10",
+    "jq>=1.8.0",
+    "numpy>=2.2.3",
+    "pandas>=2.2.3",
+    "patsy>=1.0.1",
+    "pyarrow>=19.0.1",
+    "scikit-learn>=1.6.1",
+    "snakemake>=8.28.0",
+    "statsmodels>=0.14.4",
+    "tqdm>=4.67.1",
+]
+[dependency-groups]
+dev = [
+    "ruff>=0.9.6",
+    "pre-commit>=4.1.0",
+    "snakefmt>=0.10.2",
+    "pytest>=8.3.4",
+    "ipdb>=0.13.13",
+    "python-lsp-ruff>=2.2.2",
+    "python-lsp-server>=1.12.0",
+    "sqlparse>=0.5.3",
+    "snakefmt>=0.10.2",
+    "pytest-cov>=6.0.0",
+]

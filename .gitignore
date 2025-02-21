@@ -1,15 +1,18 @@
 .snakemake
-*parquet
 *h5ad
 *png
 *svg
 *gz
+!src/tests/fixtures/inputs/metadata/*.gz
+!src/tests/fixtures/inputs/cell_counts/*.gz
+!tests/fixtures/inputs/metadata/*.gz
+!tests/fixtures/inputs/cell_counts/*.gz
 *html
 .ipynb_checkpoints
 .DS_Store
 __pycache__
-outputs
-inputs/source_*
+/outputs
+/inputs/source_*
 *plotly
 *csv
 *npz
@@ -19,3 +22,5 @@ inputs/source_*
 .venv
 .devenv
 *pdf
+.coverage.*
+*.egg-info
