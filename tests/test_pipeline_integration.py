@@ -67,7 +67,9 @@ def test_workspace(tmp_path):
     return workspace
 
 
-@pytest.mark.parametrize("pipeline_name", ["compound_trimmed", "orf_trimmed", "crispr_trimmed"])
+@pytest.mark.parametrize(
+    "pipeline_name", ["compound_trimmed", "orf_trimmed", "crispr_trimmed"]
+)
 def test_full_pipeline(test_workspace, pipeline_name):
     """
     Integration test that runs the Snakemake pipeline and verifies outputs.
