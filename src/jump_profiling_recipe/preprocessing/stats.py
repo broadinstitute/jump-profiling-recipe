@@ -14,7 +14,6 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy.stats import median_abs_deviation
-from tqdm.contrib.concurrent import thread_map
 from .io import merge_parquet, validate_columns
 from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
 
@@ -26,33 +25,33 @@ logger.setLevel(logging.INFO)
 # ------------------------------
 
 
-def get_feat_stats(
-    dframe: pd.DataFrame, features: list[str] | None = None
-) -> pd.DataFrame:
-    """
-    Calculate descriptive statistics (e.g. mean, std, min, max, quartiles, and IQR) for each feature
-    column in a DataFrame.
+# def get_feat_stats(
+#     dframe: pd.DataFrame, features: list[str] | None = None
+# ) -> pd.DataFrame:
+#     """
+#     Calculate descriptive statistics (e.g. mean, std, min, max, quartiles, and IQR) for each feature
+#     column in a DataFrame.
 
-    Parameters
-    ----------
-    dframe : pd.DataFrame
-        The input DataFrame containing feature columns and possibly metadata columns.
-    features : list of str, optional
-        The names of the feature columns for which to compute statistics.
-        If None, automatically determine feature columns using `get_feature_columns`.
+#     Parameters
+#     ----------
+#     dframe : pd.DataFrame
+#         The input DataFrame containing feature columns and possibly metadata columns.
+#     features : list of str, optional
+#         The names of the feature columns for which to compute statistics.
+#         If None, automatically determine feature columns using `get_feature_columns`.
 
-    Returns
-    -------
-    pd.DataFrame
-        A DataFrame containing descriptive statistics for each specified feature, including an
-        additional "iqr" column.
-    """
-    if features is None:
-        features = get_feature_columns(dframe)
-    desc = thread_map(lambda x: dframe[x].describe(), features, leave=False)
-    desc = pd.DataFrame(desc)
-    desc["iqr"] = desc["75%"] - desc["25%"]
-    return desc
+#     Returns
+#     -------
+#     pd.DataFrame
+#         A DataFrame containing descriptive statistics for each specified feature, including an
+#         additional "iqr" column.
+#     """
+#     if features is None:
+#         features = get_feature_columns(dframe)
+#     desc = thread_map(lambda x: dframe[x].describe(), features, leave=False)
+#     desc = pd.DataFrame(desc)
+#     desc["iqr"] = desc["75%"] - desc["25%"]
+#     return desc
 
 
 def get_plate_stats(dframe: pd.DataFrame) -> pd.DataFrame:
@@ -117,26 +116,26 @@ def get_plate_stats(dframe: pd.DataFrame) -> pd.DataFrame:
     return stats
 
 
-def compute_stats(parquet_path: str, stats_path: str) -> None:
-    """
-    Load a parquet file, compute per-feature descriptive statistics, and save them to another
-    parquet file.
+# def compute_stats(parquet_path: str, stats_path: str) -> None:
+#     """
+#     Load a parquet file, compute per-feature descriptive statistics, and save them to another
+#     parquet file.
 
-    Parameters
-    ----------
-    parquet_path : str
-        The file path to the input parquet data.
-    stats_path : str
-        The file path where the resulting stats parquet file will be saved.
+#     Parameters
+#     ----------
+#     parquet_path : str
+#         The file path to the input parquet data.
+#     stats_path : str
+#         The file path where the resulting stats parquet file will be saved.
 
-    Returns
-    -------
-    None
-        Writes the per-feature stats DataFrame to the specified parquet file.
-    """
-    dframe = pd.read_parquet(parquet_path)
-    fea_stats = get_feat_stats(dframe)
-    fea_stats.to_parquet(stats_path)
+#     Returns
+#     -------
+#     None
+#         Writes the per-feature stats DataFrame to the specified parquet file.
+#     """
+#     dframe = pd.read_parquet(parquet_path)
+#     fea_stats = get_feat_stats(dframe)
+#     fea_stats.to_parquet(stats_path)
 
 
 def compute_norm_stats(parquet_path: str, df_stats_path: str, use_negcon: bool) -> None:

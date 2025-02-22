@@ -7,6 +7,8 @@ rule sphering_explore:
     output:
         "outputs/{scenario}/sphering/exploration/{pipeline}_reg~{reg}.parquet",
         "outputs/{scenario}/sphering/exploration/{pipeline}_reg~{reg}.npz",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_sphering_explore_reg~{reg}.txt"
     params:
         method=config["sphering_method"],
         reg=lambda wc: float(wc.reg),
@@ -37,6 +39,8 @@ rule select_best_sphering:
         ap_nonrep_path="outputs/{scenario}/metrics/{pipeline}_sphering_ap_nonrep.parquet",
         map_negcon_path="outputs/{scenario}/metrics/{pipeline}_sphering_map_negcon.parquet",
         map_nonrep_path="outputs/{scenario}/metrics/{pipeline}_sphering_map_nonrep.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_sphering_select_best.txt"
     run:
         pp.sphering.select_best(
             input.parquet_files,
