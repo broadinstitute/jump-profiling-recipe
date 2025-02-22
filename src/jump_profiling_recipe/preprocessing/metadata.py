@@ -113,36 +113,36 @@ def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str]:
     return [c for c in cols if re.match(METADATA_PATTERN, c)]
 
 
-def get_feature_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Get feature columns subset from dataframe.
+# def get_feature_data(df: pd.DataFrame) -> pd.DataFrame:
+#     """Get feature columns subset from dataframe.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         Input dataframe
 
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe containing only feature columns
-    """
-    return df[get_feature_columns(df)]
+#     Returns
+#     -------
+#     pd.DataFrame
+#         Dataframe containing only feature columns
+#     """
+#     return df[get_feature_columns(df)]
 
 
-def get_metadata_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Get metadata columns subset from dataframe.
+# def get_metadata_data(df: pd.DataFrame) -> pd.DataFrame:
+#     """Get metadata columns subset from dataframe.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         Input dataframe
 
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe containing only metadata columns
-    """
-    return df[get_metadata_columns(df)]
+#     Returns
+#     -------
+#     pd.DataFrame
+#         Dataframe containing only metadata columns
+#     """
+#     return df[get_metadata_columns(df)]
 
 
 # ------------------------------

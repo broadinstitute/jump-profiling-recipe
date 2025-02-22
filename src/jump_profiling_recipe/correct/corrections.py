@@ -35,36 +35,36 @@ logger.setLevel(logging.INFO)
 # ------------------------------
 
 
-def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
-    """Get metadata columns subset from dataframe.
+# def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
+#     """Get metadata columns subset from dataframe.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
+#     Parameters
+#     ----------
+#     df : pandas.DataFrame
+#         Input dataframe
 
-    Returns
-    -------
-    pandas.DataFrame
-        Dataframe containing only metadata columns
-    """
-    return df[get_metadata_columns(df)]
+#     Returns
+#     -------
+#     pandas.DataFrame
+#         Dataframe containing only metadata columns
+#     """
+#     return df[get_metadata_columns(df)]
 
 
-def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
-    """Get feature columns subset from dataframe.
+# def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
+#     """Get feature columns subset from dataframe.
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
+#     Parameters
+#     ----------
+#     df : pandas.DataFrame
+#         Input dataframe
 
-    Returns
-    -------
-    pandas.DataFrame
-        Dataframe containing only feature columns
-    """
-    return df[get_feature_columns(df)]
+#     Returns
+#     -------
+#     pandas.DataFrame
+#         Dataframe containing only feature columns
+#     """
+#     return df[get_feature_columns(df)]
 
 
 # ------------------------------
