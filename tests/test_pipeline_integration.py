@@ -91,8 +91,15 @@ def test_full_pipeline(test_workspace, pipeline_name):
         "compound_trimmed": {
             "profiles_var_mad_int_featselect_harmony.parquet": True,
             "profiles_var_mad_int_featselect.parquet": False,
-        }
-        # Add more pipeline configurations as needed
+        },
+        "crispr_trimmed": {
+            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,
+            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
+        "orf_trimmed": {
+            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
+            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
     }
 
     expected_parquet_files = PIPELINE_EXPECTED_FILES.get(pipeline_name, None)
