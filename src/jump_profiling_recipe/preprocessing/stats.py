@@ -14,7 +14,6 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy.stats import median_abs_deviation
-from tqdm.contrib.concurrent import thread_map
 from .io import merge_parquet, validate_columns
 from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
 
