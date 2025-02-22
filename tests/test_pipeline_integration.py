@@ -67,7 +67,7 @@ def test_workspace(tmp_path):
     return workspace
 
 
-@pytest.mark.parametrize("pipeline_name", ["crispr"])
+@pytest.mark.parametrize("pipeline_name", ["crispr_trimmed"])
 def test_full_pipeline(test_workspace, pipeline_name):
     """
     Integration test that runs the Snakemake pipeline and verifies outputs.
@@ -78,7 +78,7 @@ def test_full_pipeline(test_workspace, pipeline_name):
     """
     workspace = test_workspace
     snakefile = workspace / "Snakefile"
-    configfile = workspace / "inputs" / "config" / f"{pipeline_name}_trimmed.json"
+    configfile = workspace / "inputs" / "config" / f"{pipeline_name}.json"
 
     # Run the pipeline
     run_workflow(snakefile, configfile)
