@@ -68,7 +68,8 @@ def test_workspace(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "pipeline_name", ["compound_trimmed", "orf_trimmed", "crispr_trimmed"]
+    "pipeline_name",
+    ["compound_trimmed", "orf_trimmed", "crispr_trimmed", "pipeline_1_trimmed"],
 )
 def test_full_pipeline(test_workspace, pipeline_name):
     """
@@ -90,6 +91,10 @@ def test_full_pipeline(test_workspace, pipeline_name):
     assert done_file.exists(), f"Expected output file {done_file} was not created"
 
     PIPELINE_EXPECTED_FILES = {
+        "pipeline_1_trimmed": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
+        },
         "compound_trimmed": {
             "profiles_var_mad_int_featselect_harmony.parquet": True,
             "profiles_var_mad_int_featselect.parquet": False,
