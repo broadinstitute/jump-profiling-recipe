@@ -87,10 +87,17 @@ def test_full_pipeline(test_workspace, pipeline_name):
     done_file = workspace / "outputs" / pipeline_name / "reformat.done"
     assert done_file.exists(), f"Expected output file {done_file} was not created"
 
-    expected_parquet_files = {
-        "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,  # Allow approximate comparison
-        "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,  # Require exact comparison
+    PIPELINE_EXPECTED_FILES = {
+        "compound_trimmed": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
+        }
+        # Add more pipeline configurations as needed
     }
+
+    expected_parquet_files = PIPELINE_EXPECTED_FILES.get(pipeline_name, None)
+    if expected_parquet_files is None:
+        raise ValueError(f"Undefined expected files for pipeline: {pipeline_name}")
 
     def compare_dataframes(actual_df, expected_df, filename, allow_approximate):
         """Helper function to compare DataFrames with detailed reporting"""
