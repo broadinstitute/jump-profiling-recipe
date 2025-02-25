@@ -33,4 +33,3 @@ do
         aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/profiles/${source_id}/workspace/profiles
     fi
 done
-

@@ -34,13 +34,17 @@ def filter_columns(df, filepath):
     """
     # Always include all Metadata columns
     metadata_cols = [col for col in df.columns if col.startswith("Metadata")]
-    
+
     # Get additional columns based on profile type
     if is_deep_learning_profile(filepath):
-        additional_cols = [col for col in df.columns if not col.startswith("Metadata")][:3]
+        additional_cols = [col for col in df.columns if not col.startswith("Metadata")][
+            :3
+        ]
     else:
-        additional_cols = [col for col in df.columns if col.startswith("Cells_AreaShape_Zernike_5")]
-    
+        additional_cols = [
+            col for col in df.columns if col.startswith("Cells_AreaShape_Zernike_5")
+        ]
+
     filtered_cols = metadata_cols + additional_cols
     return df[filtered_cols]
 
