@@ -30,6 +30,8 @@ rule reformat:
 rule write_parquet:
     output:
         "outputs/{scenario}/profiles.parquet",
+    benchmark:
+        "benchmarks/{scenario}/write_parquet.txt"
     run:
         pp.io.write_parquet(
             config["sources"],
@@ -43,6 +45,8 @@ rule compute_norm_stats:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/norm_stats/{pipeline}.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_normstats.txt"
     params:
         use_negcon=config["use_mad_negcon"],
     run:
@@ -55,6 +59,8 @@ rule select_variant_feats:
         "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_var.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_var.txt"
     run:
         pp.stats.select_variant_features(*input, *output)
 
@@ -65,6 +71,8 @@ rule mad_normalize:
         "outputs/{scenario}/norm_stats/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_mad.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_mad.txt"
     run:
         pp.normalize.mad(*input, *output)
 
@@ -74,6 +82,8 @@ rule INT:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_int.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_int.txt"
     run:
         pp.transform.rank_int(*input, *output)
 
@@ -83,6 +93,8 @@ rule well_correct:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_wellpos.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_wellpos.txt"
     run:
         correct.corrections.subtract_well_mean(*input, *output)
 
@@ -92,6 +104,8 @@ rule cc_regress:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_cc.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_cc.txt"
     params:
         cc_path=config.get("cc_path"),
     run:
@@ -105,6 +119,8 @@ rule remove_outliers:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_outlier.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_outlier.txt"
     run:
         pp.clean.remove_outliers(*input, *output)
 
@@ -114,6 +130,8 @@ rule annotate_genes:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_annotated.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_annotated.txt"
     params:
         df_gene_path="inputs/metadata/crispr.csv.gz",
         df_chrom_path="inputs/metadata/gene_chromosome_map.tsv",
@@ -128,6 +146,8 @@ rule pca_transform:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_PCA.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_PCA.txt"
     run:
         correct.corrections.transform_data(*input, *output)
 
@@ -137,6 +157,8 @@ rule correct_arm:
         "outputs/{scenario}/{pipeline}_annotated.parquet",
     output:
         "outputs/{scenario}/{pipeline}_corrected.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_corrected.txt"
     params:
         gene_expression_path="inputs/metadata/Recursion_U2OS_expression_data.csv.gz",
     run:
@@ -148,6 +170,8 @@ rule featselect:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_featselect.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_featselect.txt"
     params:
         keep_image_features=config["keep_image_features"],
     run:
@@ -159,6 +183,8 @@ rule harmony:
         "outputs/{scenario}/{pipeline}.parquet",
     output:
         "outputs/{scenario}/{pipeline}_harmony.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_harmony.txt"
     params:
         batch_key=config["batch_key"],
         thread_config = {

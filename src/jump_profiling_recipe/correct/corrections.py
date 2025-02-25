@@ -5,7 +5,6 @@ This module provides domain-specific utilities for biological data.
 For generic numerical data cleaning, see preprocessing/clean.py
 
 File Structure:
-- DataFrame Column Operations: Utilities for handling metadata and feature columns
 - NA Value Handling: Functions for cleaning and handling missing values
 - Data Annotation: Gene and chromosome annotation functions
 - Data Transformation & Correction: Well position, PCA, and arm correction methods
@@ -28,44 +27,6 @@ from ..preprocessing.utils import validate_columns as validate_columns
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-# ------------------------------
-# DataFrame Column Operations
-# ------------------------------
-
-
-def get_metadata(df: pd.DataFrame) -> pd.DataFrame:
-    """Get metadata columns subset from dataframe.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pandas.DataFrame
-        Dataframe containing only metadata columns
-    """
-    return df[get_metadata_columns(df)]
-
-
-def get_featuredata(df: pd.DataFrame) -> pd.DataFrame:
-    """Get feature columns subset from dataframe.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pandas.DataFrame
-        Dataframe containing only feature columns
-    """
-    return df[get_feature_columns(df)]
-
 
 # ------------------------------
 # NA Value Handling

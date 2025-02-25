@@ -17,6 +17,7 @@ def run_workflow(snakefile: Path, configfile: Path):
     """Run programmatically a snakefile using the given config"""
     resource = ResourceSettings(cores=1)
     config = ConfigSettings(configfiles=[configfile])
+
     with SnakemakeApi(
         OutputSettings(
             verbose=False,
@@ -47,41 +48,70 @@ def test_workspace(tmp_path):
     """
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+
+    # Copy profiles directory
+    # TODO: Move the profiles to a subfolder of inputs then update paths below
     fixtures_dir = Path(__file__).parent / "fixtures"
+    shutil.copytree(fixtures_dir / "inputs", workspace / "inputs")
 
-    # Copy entire input and output folders from fixtures
-    for folder in ["inputs", "outputs"]:
-        src = fixtures_dir / folder
-        dst = workspace / folder
-        if src.exists():
-            shutil.copytree(src, dst)
+    # Copy Snakefile, rules, inputs
+    root_dir = Path(__file__).parent.parent
 
-    # Copy Snakefile and rules directory
-    shutil.copy(fixtures_dir / "Snakefile", workspace / "Snakefile")
-    shutil.copytree(fixtures_dir / "rules", workspace / "rules")
+    shutil.copy(root_dir / "Snakefile", workspace / "Snakefile")
+    shutil.copytree(root_dir / "rules", workspace / "rules")
+    for subfolder in ["cell_counts", "metadata"]:
+        shutil.copytree(
+            root_dir / "inputs" / subfolder, workspace / "inputs" / subfolder
+        )
 
     return workspace
 
 
-def test_full_pipeline(test_workspace):
+@pytest.mark.parametrize(
+    "pipeline_name",
+    ["compound_trimmed", "orf_trimmed", "crispr_trimmed", "pipeline_1_trimmed"],
+)
+def test_full_pipeline(test_workspace, pipeline_name):
     """
     Integration test that runs the Snakemake pipeline and verifies outputs.
+
+    Args:
+        test_workspace: Pytest fixture providing the test workspace
+        pipeline_name: Name of the pipeline to test
     """
     workspace = test_workspace
     snakefile = workspace / "Snakefile"
-    configfile = workspace / "inputs" / "config" / "crispr_trimmed.json"
+    configfile = workspace / "inputs" / "config" / f"{pipeline_name}.json"
 
     # Run the pipeline
     run_workflow(snakefile, configfile)
 
     # Verify outputs
-    done_file = workspace / "outputs" / "crispr" / "reformat.done"
+    done_file = workspace / "outputs" / pipeline_name / "reformat.done"
     assert done_file.exists(), f"Expected output file {done_file} was not created"
 
-    expected_parquet_files = {
-        "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,  # Allow approximate comparison
-        "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,  # Require exact comparison
+    PIPELINE_EXPECTED_FILES = {
+        "pipeline_1_trimmed": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
+        },
+        "compound_trimmed": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
+        },
+        "crispr_trimmed": {
+            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected.parquet": True,
+            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
+        "orf_trimmed": {
+            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
+            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
     }
+
+    expected_parquet_files = PIPELINE_EXPECTED_FILES.get(pipeline_name, None)
+    if expected_parquet_files is None:
+        raise ValueError(f"Undefined expected files for pipeline: {pipeline_name}")
 
     def compare_dataframes(actual_df, expected_df, filename, allow_approximate):
         """Helper function to compare DataFrames with detailed reporting"""
@@ -115,7 +145,9 @@ def test_full_pipeline(test_workspace):
             )
 
     for parquet_filename, allow_approximate in expected_parquet_files.items():
-        profiles_file = workspace / "outputs" / "crispr_public" / parquet_filename
+        profiles_file = (
+            workspace / "outputs" / f"{pipeline_name}_public" / parquet_filename
+        )
         assert profiles_file.exists(), (
             f"Expected output file {profiles_file} was not created"
         )
@@ -125,7 +157,7 @@ def test_full_pipeline(test_workspace):
             Path(__file__).parent
             / "fixtures"
             / "outputs"
-            / "crispr_public"
+            / f"{pipeline_name}_public"
             / parquet_filename
         )
         expected_df = pd.read_parquet(expected_file_path)

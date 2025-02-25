@@ -26,9 +26,8 @@ UNTREATED = "JCP2022_999999"
 UNKNOWN = "JCP2022_UNKNOWN"
 BAD_CONSTRUCT = "JCP2022_900001"
 
-MICRO_CONFIG = pd.read_csv(
-    "https://raw.githubusercontent.com/jump-cellpainting/datasets/181fa0dc96b0d68511b437cf75a712ec782576aa/metadata/microscope_config.csv"
-)
+MICRO_CONFIG = pd.read_csv("inputs/metadata/microscope_config.csv")
+
 MICRO_CONFIG["Metadata_Source"] = "source_" + MICRO_CONFIG["Metadata_Source"].astype(
     str
 )
@@ -112,38 +111,6 @@ def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str]:
     if isinstance(cols, pd.DataFrame):
         return cols.filter(regex=METADATA_PATTERN).columns.tolist()
     return [c for c in cols if re.match(METADATA_PATTERN, c)]
-
-
-def get_feature_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Get feature columns subset from dataframe.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe containing only feature columns
-    """
-    return df[get_feature_columns(df)]
-
-
-def get_metadata_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Get metadata columns subset from dataframe.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe containing only metadata columns
-    """
-    return df[get_metadata_columns(df)]
 
 
 # ------------------------------

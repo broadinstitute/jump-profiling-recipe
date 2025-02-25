@@ -1,17 +1,17 @@
 {
-    "scenario": "crispr_trimmed",
-    "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony_PCA_corrected",
+    "scenario": "orf_trimmed",
+    "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
     "keep_image_features": false,
     "use_mad_negcon": false,
     "sources": [
-        "source_13"
+        "source_4"
     ],
     "plate_types": [
-        "CRISPR"
+        "ORF"
     ],
     "batch_key": "Metadata_Plate",
     "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 2,
-    "cc_path": "inputs/cell_counts/crispr_cell_counts.csv.gz"
+    "cc_path": "inputs/cell_counts/orf_cell_counts.csv.gz"
 }

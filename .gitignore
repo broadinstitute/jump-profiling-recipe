@@ -3,18 +3,18 @@
 *png
 *svg
 *gz
-!src/tests/fixtures/inputs/metadata/*.gz
-!src/tests/fixtures/inputs/cell_counts/*.gz
-!tests/fixtures/inputs/metadata/*.gz
+!inputs/metadata/*.gz
 !tests/fixtures/inputs/cell_counts/*.gz
 *html
 .ipynb_checkpoints
 .DS_Store
 __pycache__
 /outputs
+/benchmarks
 /inputs/source_*
 *plotly
 *csv
+!inputs/metadata/*.csv
 *npz
 *pkl
 *pickle
@@ -24,3 +24,4 @@ __pycache__
 *pdf
 .coverage.*
 *.egg-info
+.vscode/settings.json

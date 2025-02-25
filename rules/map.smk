@@ -3,6 +3,8 @@ rule average_precision_negcon:
         "outputs/{prefix}/{pipeline}.parquet",
     output:
         "outputs/{prefix}/metrics/{pipeline}_ap_negcon.parquet",
+    benchmark:
+        "benchmarks/{prefix}/{pipeline}_ap_negcon.txt"
     params:
         plate_types=config["plate_types"],
     run:
@@ -14,6 +16,8 @@ rule average_precision_nonrep:
         "outputs/{prefix}/{pipeline}.parquet",
     output:
         "outputs/{prefix}/metrics/{pipeline}_ap_nonrep.parquet",
+    benchmark:
+        "benchmarks/{prefix}/{pipeline}_ap_nonrep.txt"
     params:
         plate_types=config["plate_types"],
     run:
@@ -25,5 +29,7 @@ rule mean_average_precision:
         "outputs/{prefix}/metrics/{pipeline}_ap_{reftype}.parquet",
     output:
         "outputs/{prefix}/metrics/{pipeline}_map_{reftype}.parquet",
+    benchmark:
+        "benchmarks/{prefix}/{pipeline}_map_{reftype}.txt"
     run:
         pp.metrics.mean_average_precision(*input, *output)

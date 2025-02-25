@@ -1,0 +1,20 @@
+{
+    "scenario": "pipeline_1_trimmed",
+    "pipeline": "profiles_var_mad_int_featselect_harmony",
+    "keep_image_features": true,
+    "use_mad_negcon": true,
+    "sources": [
+        "source_4",
+        "source_5",
+        "source_13"
+    ],
+    "plate_types": [
+        "COMPOUND",
+        "ORF",
+        "CRISPR"
+    ],
+    "batch_key": "Metadata_Plate",
+    "label_key": "Metadata_JCP2022",
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 2
+}
