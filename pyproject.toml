@@ -29,4 +29,5 @@ dev = [
     "sqlparse>=0.5.3",
     "snakefmt>=0.10.2",
     "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
 ]
