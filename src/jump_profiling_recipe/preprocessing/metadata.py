@@ -138,7 +138,7 @@ def build_path(row: pd.Series) -> str:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
     template = (
-        "./inputs/{Metadata_Source}/workspace/profiles/"
+        "./inputs/profiles/{Metadata_Source}/workspace/profiles/"
         "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
     )
     return template.format(**row.to_dict())

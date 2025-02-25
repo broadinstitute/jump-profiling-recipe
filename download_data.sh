@@ -21,5 +21,5 @@ readarray -t sources < <(jq -r '.sources[]' "$configfile")
 
 for source_id in "${sources[@]}";
 do
-    aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/${source_id}/workspace/profiles
+    aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/profiles/${source_id}/workspace/profiles
 done
