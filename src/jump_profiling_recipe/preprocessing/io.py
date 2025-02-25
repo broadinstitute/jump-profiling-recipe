@@ -207,7 +207,7 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
 
 
 def prealloc_params(
-    sources: list[str], plate_types: list[str]
+    sources: list[str], plate_types: list[str], profile_type: str | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Get paths to parquet files and corresponding slices for concatenation.
 
@@ -227,6 +227,8 @@ def prealloc_params(
         List of data sources
     plate_types : list[str]
         List of plate types
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
 
     Returns
     -------
@@ -240,7 +242,7 @@ def prealloc_params(
     paths = (
         meta[["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]]
         .drop_duplicates()
-        .apply(build_path, axis=1)
+        .apply(build_path, profile_type=profile_type, axis=1)
     ).values
 
     # Filter out missing paths
@@ -267,7 +269,7 @@ def prealloc_params(
     return paths, slices
 
 
-def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def load_data(sources: list[str], plate_types: list[str], profile_type: str | None = None) -> pd.DataFrame:
     """Load all plates given the parameters.
 
     Parameters
@@ -276,13 +278,15 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         List of data sources
     plate_types : list[str]
         List of plate types
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
 
     Returns
     -------
     pd.DataFrame
         Combined DataFrame containing all plates' data
     """
-    paths, slices = prealloc_params(sources, plate_types)
+    paths, slices = prealloc_params(sources, plate_types, profile_type)
     total = slices[-1, 1]
 
     with pq.ParquetFile(paths[0]) as f:
@@ -308,7 +312,7 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
     return dframe
 
 
-def write_parquet(sources: list[str], plate_types: list[str], output_file: str) -> None:
+def write_parquet(sources: list[str], plate_types: list[str], output_file: str, profile_type: str | None = None) -> None:
     """Write a combined and preprocessed parquet dataset from multiple source plates.
 
     This function:
@@ -327,8 +331,10 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
         List of plate types
     output_file : str
         Path where to save the output parquet file
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
     """
-    dframe = load_data(sources, plate_types)
+    dframe = load_data(sources, plate_types, profile_type)
 
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]

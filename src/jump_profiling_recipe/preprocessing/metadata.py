@@ -118,7 +118,7 @@ def get_metadata_columns(cols: Iterable[str] | pd.DataFrame) -> list[str]:
 # ------------------------------
 
 
-def build_path(row: pd.Series) -> str:
+def build_path(row: pd.Series, profile_type: str | None = None) -> str:
     """Create the path to the parquet file.
 
     Parameters
@@ -126,6 +126,8 @@ def build_path(row: pd.Series) -> str:
     row : pd.Series
         Row containing metadata information with required fields:
         Metadata_Source, Metadata_Batch, Metadata_Plate.
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
 
     Returns
     -------
@@ -137,10 +139,16 @@ def build_path(row: pd.Series) -> str:
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
-    template = (
-        "./inputs/profiles/{Metadata_Source}/workspace/profiles/"
-        "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
-    )
+    if profile_type:
+        template = (
+            "./inputs/profiles_{profile_type}/{Metadata_Source}/workspace/profiles/"
+            "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
+        )
+    else:
+        template = (
+            "./inputs/profiles/{Metadata_Source}/workspace/profiles/"
+            "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
+        )
     return template.format(**row.to_dict())
 
 
