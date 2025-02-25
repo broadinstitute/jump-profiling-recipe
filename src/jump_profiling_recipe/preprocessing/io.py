@@ -269,7 +269,9 @@ def prealloc_params(
     return paths, slices
 
 
-def load_data(sources: list[str], plate_types: list[str], profile_type: str | None = None) -> pd.DataFrame:
+def load_data(
+    sources: list[str], plate_types: list[str], profile_type: str | None = None
+) -> pd.DataFrame:
     """Load all plates given the parameters.
 
     Parameters
@@ -312,7 +314,12 @@ def load_data(sources: list[str], plate_types: list[str], profile_type: str | No
     return dframe
 
 
-def write_parquet(sources: list[str], plate_types: list[str], output_file: str, profile_type: str | None = None) -> None:
+def write_parquet(
+    sources: list[str],
+    plate_types: list[str],
+    output_file: str,
+    profile_type: str | None = None,
+) -> None:
     """Write a combined and preprocessed parquet dataset from multiple source plates.
 
     This function:
