@@ -37,6 +37,7 @@ rule write_parquet:
             config["sources"],
             config["plate_types"],
             output[0],
+            profile_type=config.get("profile_type")
         )
 
 
