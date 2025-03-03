@@ -296,18 +296,27 @@ def load_data(
     # Only open the parquet file once to check schema
     with pq.ParquetFile(paths[0]) as f:
         schema_names = f.schema.names
-        is_dl_profile = "all_emb" in schema_names
+
+    is_dl_profile = profile_type is not None
 
     if is_dl_profile:
         # For DL profiles, first determine embedding dimension by reading the first file
         sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
         embedding_dim = len(sample_df["all_emb"].iloc[0])
         feat_cols = [f"X_{i}" for i in range(embedding_dim)]
-        meta_cols = [col for col in schema_names if col != "all_emb"]
+        meta_cols = [
+            col for col in schema_names if col != "element"
+        ]  # FIXME: looking for "element" is hacky
+
+        if not meta_cols[0].startswith("Metadata_"):
+            _meta_cols = meta_cols
+            meta_cols = ["Metadata_" + meta_col.capitalize() for meta_col in _meta_cols]
 
         def read_processor(params):
             path, start, end = params
             df = pd.read_parquet(path)
+
+            df.rename(columns=dict(zip(_meta_cols, meta_cols)), inplace=True)
 
             # Extract metadata
             meta[int(start) : int(end)] = df[meta_cols].values
