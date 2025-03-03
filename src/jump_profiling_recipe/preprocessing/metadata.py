@@ -141,12 +141,14 @@ def build_path(row: pd.Series, profile_type: str | None = None) -> str:
 
     if profile_type:
         template = (
-            "./inputs/profiles_{profile_type}/{Metadata_Source}/workspace/profiles/"
+            f"./inputs/profiles_{profile_type}/"
+            "{Metadata_Source}/workspace/profiles/"
             "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
         )
     else:
         template = (
-            "./inputs/profiles/{Metadata_Source}/workspace/profiles/"
+            "./inputs/profiles/"
+            "{Metadata_Source}/workspace/profiles/"
             "{Metadata_Batch}/{Metadata_Plate}/{Metadata_Plate}.parquet"
         )
     return template.format(**row.to_dict())
