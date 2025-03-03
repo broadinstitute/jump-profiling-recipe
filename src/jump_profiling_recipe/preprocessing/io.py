@@ -288,29 +288,58 @@ def load_data(
     pd.DataFrame
         Combined DataFrame containing all plates' data
     """
+    # TODO: allow for other ways of storing embeddings, like one per channel
+
     paths, slices = prealloc_params(sources, plate_types, profile_type)
     total = slices[-1, 1]
 
+    # Only open the parquet file once to check schema
     with pq.ParquetFile(paths[0]) as f:
-        meta_cols = get_metadata_columns(f.schema.names)
-        feat_cols = get_feature_columns(f.schema.names)
+        schema_names = f.schema.names
+        is_dl_profile = "all_emb" in schema_names
+
+    if is_dl_profile:
+        # For DL profiles, first determine embedding dimension by reading the first file
+        sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
+        embedding_dim = len(sample_df["all_emb"].iloc[0])
+        feat_cols = [f"X_{i}" for i in range(embedding_dim)]
+        meta_cols = [col for col in schema_names if col != "all_emb"]
+
+        def read_processor(params):
+            path, start, end = params
+            df = pd.read_parquet(path)
+
+            # Extract metadata
+            meta[int(start) : int(end)] = df[meta_cols].values
+
+            # Extract and unpack embeddings
+            embeddings = np.stack(df["all_emb"].values)
+            feats[int(start) : int(end)] = embeddings
+    else:
+        # Original code for standard profile format
+        meta_cols = get_metadata_columns(schema_names)
+        feat_cols = get_feature_columns(schema_names)
+
+        def read_processor(params):
+            path, start, end = params
+            df = pd.read_parquet(path)
+            meta[int(start) : int(end)] = df[meta_cols].values
+            feats[int(start) : int(end)] = df[feat_cols].values
+
+    # Pre-allocate arrays
     meta = np.empty([total, len(meta_cols)], dtype="|S128")
     feats = np.empty([total, len(feat_cols)], dtype=np.float32)
 
-    def read_parquet(params):
-        path, start, end = params
-        df = pd.read_parquet(path)
-
-        meta[int(start) : int(end)] = df[meta_cols].values
-        feats[int(start) : int(end)] = df[feat_cols].values
-
+    # Apply thread_map
     params = np.concatenate([paths[:, None], slices], axis=1)
-    thread_map(read_parquet, params)
+    thread_map(read_processor, params)
 
+    # Create final DataFrame
     meta = pd.DataFrame(data=meta.astype(str), columns=meta_cols, dtype="category")
     dframe = pd.DataFrame(columns=feat_cols, data=feats)
     for col in meta_cols:
         dframe[col] = meta[col]
+
     return dframe
 
 
