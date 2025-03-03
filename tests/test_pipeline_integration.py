@@ -69,7 +69,13 @@ def test_workspace(tmp_path):
 
 @pytest.mark.parametrize(
     "pipeline_name",
-    ["compound_trimmed", "orf_trimmed", "crispr_trimmed", "pipeline_1_trimmed"],
+    [
+        "compound_trimmed",
+        "orf_trimmed",
+        "crispr_trimmed",
+        "pipeline_1_trimmed",
+        "orf_cpcnn_trimmed",
+    ],
 )
 def test_full_pipeline(test_workspace, pipeline_name):
     """
