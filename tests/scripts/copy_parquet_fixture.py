@@ -27,25 +27,21 @@ def is_deep_learning_profile(filepath):
 def filter_columns(df, filepath):
     """
     Given a DataFrame and filepath, return a new DataFrame containing:
-    - For all profiles: all Metadata columns
-    Plus:
-    - For deep learning profiles: first 3 non-Metadata columns
-    - For other profiles: columns starting with 'Cells_AreaShape_Zernike_5'
+    - For deep learning profiles: prespecified columns, and first 3 columns ending with "_emb"
+    - For other profiles: all Metadata columns, and columns starting with 'Cells_AreaShape_Zernike_5'
     """
-    # Always include all Metadata columns
-    metadata_cols = [col for col in df.columns if col.startswith("Metadata")]
 
-    # Get additional columns based on profile type
     if is_deep_learning_profile(filepath):
-        additional_cols = [col for col in df.columns if not col.startswith("Metadata")][
-            :3
-        ]
+        metadata_cols = ["source", "batch", "plate", "well"]
+        # TODO: Fix so that it picks only first 3 columns within the first _emb column
+        feature_cols = [col for col in df.columns if col.endswith("emb")][:3]
     else:
-        additional_cols = [
+        metadata_cols = [col for col in df.columns if col.startswith("Metadata")]
+        feature_cols = [
             col for col in df.columns if col.startswith("Cells_AreaShape_Zernike_5")
         ]
 
-    filtered_cols = metadata_cols + additional_cols
+    filtered_cols = metadata_cols + feature_cols
     return df[filtered_cols]
 
 
