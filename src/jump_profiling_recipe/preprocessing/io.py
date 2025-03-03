@@ -300,23 +300,28 @@ def load_data(
     is_dl_profile = profile_type is not None
 
     if is_dl_profile:
+        # TODO: The logic here will not work when there are multiple `_emb` columns
+
         # For DL profiles, first determine embedding dimension by reading the first file
         sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
         embedding_dim = len(sample_df["all_emb"].iloc[0])
         feat_cols = [f"X_{i}" for i in range(embedding_dim)]
-        meta_cols = [
-            col for col in schema_names if col != "element"
-        ]  # FIXME: looking for "element" is hacky
+
+        # The "element" field in the Parquet schema represents the array data of "all_emb"
+        # Filtering it out to get only metadata columns
+        meta_cols = [col for col in schema_names if col != "element"]
 
         if not meta_cols[0].startswith("Metadata_"):
-            _meta_cols = meta_cols
-            meta_cols = ["Metadata_" + meta_col.capitalize() for meta_col in _meta_cols]
+            orig_meta_cols = meta_cols
+            meta_cols = [
+                "Metadata_" + meta_col.capitalize() for meta_col in orig_meta_cols
+            ]
 
         def read_processor(params):
             path, start, end = params
             df = pd.read_parquet(path)
 
-            df.rename(columns=dict(zip(_meta_cols, meta_cols)), inplace=True)
+            df.rename(columns=dict(zip(orig_meta_cols, meta_cols)), inplace=True)
 
             # Extract metadata
             meta[int(start) : int(end)] = df[meta_cols].values
@@ -325,7 +330,7 @@ def load_data(
             embeddings = np.stack(df["all_emb"].values)
             feats[int(start) : int(end)] = embeddings
     else:
-        # Original code for standard profile format
+        # standard profile format
         meta_cols = get_metadata_columns(schema_names)
         feat_cols = get_feature_columns(schema_names)
 
