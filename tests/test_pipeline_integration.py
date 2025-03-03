@@ -113,6 +113,10 @@ def test_full_pipeline(test_workspace, pipeline_name):
             "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
             "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
         },
+        "orf_cpcnn_trimmed": {
+            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
+            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
     }
 
     expected_parquet_files = PIPELINE_EXPECTED_FILES.get(pipeline_name, None)
