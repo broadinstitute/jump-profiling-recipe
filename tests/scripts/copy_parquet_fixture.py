@@ -27,22 +27,30 @@ def is_deep_learning_profile(filepath):
 def filter_columns(df, filepath):
     """
     Given a DataFrame and filepath, return a new DataFrame containing:
-    - For deep learning profiles: prespecified columns, and first 3 columns ending with "_emb"
+    - For deep learning profiles: Metadata columns, and the first 3 values of the embedding columns
     - For other profiles: all Metadata columns, and columns starting with 'Cells_AreaShape_Zernike_5'
     """
 
     if is_deep_learning_profile(filepath):
         metadata_cols = ["source", "batch", "plate", "well"]
-        # TODO: Fix so that it picks only first 3 columns within the first _emb column
-        feature_cols = [col for col in df.columns if col.endswith("emb")][:3]
+        emb_cols = [col for col in df.columns if col.endswith("emb")]
+
+        # Create a copy of the dataframe with required columns
+        filtered_df = df[metadata_cols + emb_cols].copy()
+
+        # For each embedding column, keep only the first 3 values of each array
+        for col in emb_cols:
+            filtered_df[col] = filtered_df[col].apply(
+                lambda x: x[:3] if hasattr(x, "__len__") else x
+            )
     else:
         metadata_cols = [col for col in df.columns if col.startswith("Metadata")]
         feature_cols = [
             col for col in df.columns if col.startswith("Cells_AreaShape_Zernike_5")
         ]
+        filtered_df = df[metadata_cols + feature_cols]
 
-    filtered_cols = metadata_cols + feature_cols
-    return df[filtered_cols]
+    return filtered_df
 
 
 def main():
