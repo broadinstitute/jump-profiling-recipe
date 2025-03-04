@@ -5,6 +5,7 @@ description = "Workflow for processing cpg0016-jump profiles"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "awscli>=1.38.0",
     "copairs>=0.4.4",
     "harmonypy>=0.0.10",
     "jq>=1.8.0",
@@ -29,4 +30,5 @@ dev = [
     "sqlparse>=0.5.3",
     "snakefmt>=0.10.2",
     "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
 ]

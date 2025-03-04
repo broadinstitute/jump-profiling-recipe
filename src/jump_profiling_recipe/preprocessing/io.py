@@ -207,7 +207,7 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
 
 
 def prealloc_params(
-    sources: list[str], plate_types: list[str]
+    sources: list[str], plate_types: list[str], profile_type: str | None = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Get paths to parquet files and corresponding slices for concatenation.
 
@@ -227,6 +227,8 @@ def prealloc_params(
         List of data sources
     plate_types : list[str]
         List of plate types
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
 
     Returns
     -------
@@ -240,7 +242,7 @@ def prealloc_params(
     paths = (
         meta[["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]]
         .drop_duplicates()
-        .apply(build_path, axis=1)
+        .apply(build_path, profile_type=profile_type, axis=1)
     ).values
 
     # Filter out missing paths
@@ -267,7 +269,9 @@ def prealloc_params(
     return paths, slices
 
 
-def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def load_data(
+    sources: list[str], plate_types: list[str], profile_type: str | None = None
+) -> pd.DataFrame:
     """Load all plates given the parameters.
 
     Parameters
@@ -276,39 +280,89 @@ def load_data(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         List of data sources
     plate_types : list[str]
         List of plate types
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
 
     Returns
     -------
     pd.DataFrame
         Combined DataFrame containing all plates' data
     """
-    paths, slices = prealloc_params(sources, plate_types)
+    # TODO: allow for other ways of storing embeddings, like one per channel
+
+    paths, slices = prealloc_params(sources, plate_types, profile_type)
     total = slices[-1, 1]
 
+    # Only open the parquet file once to check schema
     with pq.ParquetFile(paths[0]) as f:
-        meta_cols = get_metadata_columns(f.schema.names)
-        feat_cols = get_feature_columns(f.schema.names)
+        schema_names = f.schema.names
+
+    is_dl_profile = profile_type is not None
+
+    if is_dl_profile:
+        # TODO: The logic here will not work when there are multiple `_emb` columns
+
+        # For DL profiles, first determine embedding dimension by reading the first file
+        sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
+        embedding_dim = len(sample_df["all_emb"].iloc[0])
+        feat_cols = [f"X_{i}" for i in range(embedding_dim)]
+
+        # The "element" field in the Parquet schema represents the array data of "all_emb"
+        # Filtering it out to get only metadata columns
+        meta_cols = [col for col in schema_names if col != "element"]
+
+        if not meta_cols[0].startswith("Metadata_"):
+            orig_meta_cols = meta_cols
+            meta_cols = [
+                "Metadata_" + meta_col.capitalize() for meta_col in orig_meta_cols
+            ]
+
+        def read_processor(params):
+            path, start, end = params
+            df = pd.read_parquet(path)
+
+            df.rename(columns=dict(zip(orig_meta_cols, meta_cols)), inplace=True)
+
+            # Extract metadata
+            meta[int(start) : int(end)] = df[meta_cols].values
+
+            # Extract and unpack embeddings
+            embeddings = np.stack(df["all_emb"].values)
+            feats[int(start) : int(end)] = embeddings
+    else:
+        # standard profile format
+        meta_cols = get_metadata_columns(schema_names)
+        feat_cols = get_feature_columns(schema_names)
+
+        def read_processor(params):
+            path, start, end = params
+            df = pd.read_parquet(path)
+            meta[int(start) : int(end)] = df[meta_cols].values
+            feats[int(start) : int(end)] = df[feat_cols].values
+
+    # Pre-allocate arrays
     meta = np.empty([total, len(meta_cols)], dtype="|S128")
     feats = np.empty([total, len(feat_cols)], dtype=np.float32)
 
-    def read_parquet(params):
-        path, start, end = params
-        df = pd.read_parquet(path)
-
-        meta[int(start) : int(end)] = df[meta_cols].values
-        feats[int(start) : int(end)] = df[feat_cols].values
-
+    # Apply thread_map
     params = np.concatenate([paths[:, None], slices], axis=1)
-    thread_map(read_parquet, params)
+    thread_map(read_processor, params)
 
+    # Create final DataFrame
     meta = pd.DataFrame(data=meta.astype(str), columns=meta_cols, dtype="category")
     dframe = pd.DataFrame(columns=feat_cols, data=feats)
     for col in meta_cols:
         dframe[col] = meta[col]
+
     return dframe
 
 
-def write_parquet(sources: list[str], plate_types: list[str], output_file: str) -> None:
+def write_parquet(
+    sources: list[str],
+    plate_types: list[str],
+    output_file: str,
+    profile_type: str | None = None,
+) -> None:
     """Write a combined and preprocessed parquet dataset from multiple source plates.
 
     This function:
@@ -327,8 +381,10 @@ def write_parquet(sources: list[str], plate_types: list[str], output_file: str) 
         List of plate types
     output_file : str
         Path where to save the output parquet file
+    profile_type : str | None
+        If provided, indicates a deep learning profile type
     """
-    dframe = load_data(sources, plate_types)
+    dframe = load_data(sources, plate_types, profile_type)
 
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]

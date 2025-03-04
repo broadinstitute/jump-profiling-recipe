@@ -3,6 +3,7 @@
 *png
 *svg
 *gz
+inputs/profiles*
 !inputs/metadata/*.gz
 !tests/fixtures/inputs/cell_counts/*.gz
 *html
