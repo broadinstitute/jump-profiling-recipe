@@ -60,7 +60,9 @@ def test_workspace(tmp_path_factory):
     shutil.copytree(root_dir / "rules", workspace / "rules")
     for subfolder in ["cell_counts", "metadata"]:
         shutil.copytree(
-            root_dir / "inputs" / subfolder, workspace / "inputs" / subfolder
+            root_dir / "inputs" / subfolder,
+            workspace / "inputs" / subfolder,
+            dirs_exist_ok=True,  # because metadata is already present in fixtures
         )
 
     return workspace
