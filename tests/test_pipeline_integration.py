@@ -41,13 +41,12 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 
-@pytest.fixture
-def test_workspace(tmp_path):
+@pytest.fixture(scope="session")
+def test_workspace(tmp_path_factory):
     """
     Set up a temporary working directory with necessary files copied from the fixtures folder
     """
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
+    workspace = tmp_path_factory.mktemp("workspace")
 
     # Copy profiles directory
     # TODO: Move the profiles to a subfolder of inputs then update paths below
