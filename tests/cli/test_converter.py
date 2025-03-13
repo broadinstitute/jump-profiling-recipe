@@ -85,7 +85,11 @@ def test_convert_command(
 
     # Determine expected output path
     expected_output_path = (
-        temp_output_dir / "2021_04_26_Batch1" / "BR00117037" / "BR00117037.parquet"
+        temp_output_dir
+        / "profiles"
+        / "2021_04_26_Batch1"
+        / "BR00117037"
+        / "BR00117037.parquet"
     )
 
     # Check that the output file exists
@@ -166,7 +170,11 @@ def test_continue_on_error(input_file_path, temp_output_dir, tmp_path):
 
     # Check that the valid file was processed
     expected_output_path = (
-        temp_output_dir / "2021_04_26_Batch1" / "BR00117037" / "BR00117037.parquet"
+        temp_output_dir
+        / "profiles"
+        / "2021_04_26_Batch1"
+        / "BR00117037"
+        / "BR00117037.parquet"
     )
     assert expected_output_path.exists(), "Valid file was not processed"
 

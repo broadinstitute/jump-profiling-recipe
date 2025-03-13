@@ -22,7 +22,7 @@ def get_output_path(input_file: Path, output_dir: Path) -> Path:
 
     Example:
         input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
-        output: {output_dir}/2021_04_17_Batch1/BR00121331/BR00121331.parquet
+        output: {output_dir}/profiles/2021_04_17_Batch1/BR00121331/BR00121331.parquet
     """
     # Get the last three parts of the path (two dirs + filename)
     parts = input_file.parts[-3:]
@@ -32,7 +32,7 @@ def get_output_path(input_file: Path, output_dir: Path) -> Path:
 
     # Construct new path: output_dir/dir1/dir2/filename
     relative_path = Path(*parts[:-1]) / input_file.stem
-    return output_dir / relative_path.with_suffix(".parquet")
+    return output_dir / "profiles" / relative_path.with_suffix(".parquet")
 
 
 def read_input_files(file_list: Path) -> List[Path]:
