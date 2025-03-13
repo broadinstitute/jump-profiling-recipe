@@ -68,6 +68,36 @@ def get_output_path(
         )
 
 
+def extract_batch_from_path(input_file: Path) -> str:
+    """
+    Extract batch information from input file path.
+
+    The batch is considered to be the directory name two levels above the file.
+
+    Example:
+        input: a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
+        batch: 2021_04_17_Batch1
+
+    Args:
+        input_file: Path to input file
+
+    Returns:
+        Batch name as string
+    """
+    # Get the parts of the path and extract the batch name (two levels up from the file)
+    parts = input_file.parts
+
+    # Need at least 3 parts (batch_dir/plate_dir/file)
+    if len(parts) >= 3:
+        return parts[-3]
+    elif len(parts) == 2:
+        # If only two levels deep, use the top directory
+        return parts[0]
+    else:
+        # Fallback if path is not deep enough
+        return "unknown_batch"
+
+
 def read_input_files(file_list: Path) -> List[Path]:
     """Read list of input files from a text file."""
     if not file_list.exists():
@@ -142,6 +172,7 @@ def process_file(
     mandatory_feature_cols: Optional[Set[str]] = None,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
     jcp2022_col: Optional[str] = None,
+    default_plate_type: str = "UNKNOWN",
 ) -> None:
     """
     Process a single input file and save it as parquet.
@@ -153,6 +184,7 @@ def process_file(
         mandatory_feature_cols: Optional set of feature column names that must be included
         mandatory_metadata_cols: List of required metadata columns (default: ["Metadata_Plate", "Metadata_Well"])
         jcp2022_col: Optional column to be treated as Metadata_JCP2022
+        default_plate_type: Default value for Metadata_PlateType when not present in data
     """
     logger.info(f"Processing file: {input_file}")
 
@@ -223,10 +255,68 @@ def process_file(
     new_df.to_parquet(output_profile_file)
     logger.info(f"Saved processed profile file to: {output_profile_file}")
 
-    # For now, we're just creating placeholders for the metadata files
-    # The actual implementation for the metadata files will be added later
-    logger.debug(f"Plate metadata file will be saved to: {output_plate_metadata_file}")
-    logger.debug(f"Well metadata file will be saved to: {output_well_metadata_file}")
+    # Create well metadata DataFrame
+    # Columns: Metadata_Source, Metadata_Plate, Metadata_Well, Metadata_JCP2022
+    well_metadata = {
+        "Metadata_Source": metadata_df["Metadata_Source"],
+        "Metadata_Plate": metadata_df["Metadata_Plate"],
+        "Metadata_Well": metadata_df["Metadata_Well"],
+    }
+
+    # Add JCP2022 column if specified, using the column from jcp2022_col
+    if jcp2022_col and jcp2022_col in df.columns:
+        well_metadata["Metadata_JCP2022"] = df[jcp2022_col]
+    else:
+        # If jcp2022_col is not specified or not found, create an empty column
+        well_metadata["Metadata_JCP2022"] = [""] * len(df)
+        if jcp2022_col:
+            logger.warning(f"JCP2022 column '{jcp2022_col}' not found in {input_file}")
+
+    # Create well metadata DataFrame and remove duplicates
+    well_df = pd.DataFrame(well_metadata).drop_duplicates()
+
+    # Save well metadata
+    well_df.to_parquet(output_well_metadata_file)
+    logger.info(f"Saved well metadata file to: {output_well_metadata_file}")
+
+    # Create plate metadata DataFrame
+    # Columns: Metadata_Source, Metadata_Batch, Metadata_Plate, Metadata_PlateType
+
+    # Extract batch from path
+    batch = extract_batch_from_path(input_file)
+
+    # Verify that there's only one unique plate in the file
+    unique_plates = metadata_df["Metadata_Plate"].unique()
+    if len(unique_plates) > 1:
+        raise click.ClickException(
+            f"Multiple plates found in {input_file}: {unique_plates}. Each file should contain data for only one plate."
+        )
+
+    # Get the single plate value
+    plate = unique_plates[0]
+
+    # Create plate metadata with a single row
+    plate_metadata = {
+        "Metadata_Source": [source],
+        "Metadata_Batch": [batch],
+        "Metadata_Plate": [plate],
+    }
+
+    # Use Metadata_PlateType from data if it exists, otherwise use default
+    if "Metadata_PlateType" in df.columns:
+        # Get the first plate type (assuming it's consistent within the file)
+        plate_type = df["Metadata_PlateType"].iloc[0]
+        plate_metadata["Metadata_PlateType"] = [plate_type]
+    else:
+        # Use default plate type
+        plate_metadata["Metadata_PlateType"] = [default_plate_type]
+
+    # Create plate metadata DataFrame (single row)
+    plate_df = pd.DataFrame(plate_metadata)
+
+    # Save plate metadata
+    plate_df.to_parquet(output_plate_metadata_file)
+    logger.info(f"Saved plate metadata file to: {output_plate_metadata_file}")
 
     # Log column changes if in verbose mode
     if logger.getEffectiveLevel() <= logging.DEBUG:
@@ -245,6 +335,7 @@ def process_files(
     continue_on_error: bool = False,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
     jcp2022_col: Optional[str] = None,
+    default_plate_type: str = "UNKNOWN",
 ) -> None:
     """Process multiple input files.
 
@@ -256,6 +347,7 @@ def process_files(
         continue_on_error: If True, continue processing other files when one fails
         mandatory_metadata_cols: List of required metadata columns to preserve
         jcp2022_col: Optional column to be treated as Metadata_JCP2022
+        default_plate_type: Default value for Metadata_PlateType when not present
     """
     failures = 0
     start_time = time.time()
@@ -276,6 +368,7 @@ def process_files(
                 mandatory_feature_cols,
                 mandatory_metadata_cols,
                 jcp2022_col,
+                default_plate_type,
             )
             file_elapsed = time.time() - file_start_time
             logger.debug(f"Processed {input_file} in {file_elapsed:.2f} seconds")
@@ -339,6 +432,12 @@ def process_files(
     default=None,
     help="Column to be treated as Metadata_JCP2022",
 )
+@click.option(
+    "--default-plate-type",
+    type=str,
+    default="UNKNOWN",
+    help="Default value for Metadata_PlateType when not present in data",
+)
 def convert_command(
     file_list: Path,
     output_dir: Path,
@@ -348,6 +447,7 @@ def convert_command(
     continue_on_error: bool,
     mandatory_metadata: str = "Metadata_Plate,Metadata_Well",
     jcp2022_col: Optional[str] = None,
+    default_plate_type: str = "UNKNOWN",
 ):
     """Convert CSV/Parquet files to processed Parquet files.
 
@@ -393,6 +493,9 @@ def convert_command(
     if jcp2022_col:
         logger.info(f"Using JCP2022 column: {jcp2022_col}")
 
+    # Log default plate type
+    logger.info(f"Using default plate type: {default_plate_type}")
+
     # Process files
     process_files(
         input_files,
@@ -402,6 +505,7 @@ def convert_command(
         continue_on_error,
         mandatory_metadata_cols,
         jcp2022_col,
+        default_plate_type,
     )
 
 
