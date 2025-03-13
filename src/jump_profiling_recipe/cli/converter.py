@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def get_output_path(
-    input_file: Path, output_dir: Path, file_type: str = "profiles"
+    input_file: Path,
+    output_dir: Path,
+    file_type: str = "profiles",
+    metadata_level: Optional[str] = None,
 ) -> Path:
     """
     Generate output path preserving two directory levels above the input file.
@@ -26,14 +29,19 @@ def get_output_path(
         input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
         output: {output_dir}/profiles/2021_04_17_Batch1/BR00121331/BR00121331.parquet
 
-    Example (for metadata):
+    Example (for plate metadata):
         input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
-        output: {output_dir}/metadata/2021_04_17_Batch1/BR00121331/BR00121331.parquet
+        output: {output_dir}/metadata/2021_04_17_Batch1/BR00121331/plate.parquet
+
+    Example (for well metadata):
+        input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
+        output: {output_dir}/metadata/2021_04_17_Batch1/BR00121331/well.parquet
 
     Args:
         input_file: Path to input file
         output_dir: Base output directory
         file_type: Type of output file (profiles or metadata)
+        metadata_level: For metadata files, specifies plate or well level
 
     Returns:
         Path to output file
@@ -44,9 +52,20 @@ def get_output_path(
         # If path is not deep enough, just use available parts
         parts = input_file.parts
 
-    # Construct new path: output_dir/file_type/dir1/dir2/filename
-    relative_path = Path(*parts[:-1]) / input_file.stem
-    return output_dir / file_type / relative_path.with_suffix(".parquet")
+    # For profiles, use input filename
+    if file_type == "profiles":
+        # Construct new path: output_dir/profiles/dir1/dir2/filename.parquet
+        relative_path = Path(*parts[:-1]) / input_file.stem
+        return output_dir / file_type / relative_path.with_suffix(".parquet")
+    # For metadata files, use plate.parquet or well.parquet
+    elif file_type == "metadata" and metadata_level in ["plate", "well"]:
+        # Construct new path: output_dir/metadata/dir1/dir2/metadata_level.parquet
+        relative_path = Path(*parts[:-1]) / f"{metadata_level}"
+        return output_dir / file_type / relative_path.with_suffix(".parquet")
+    else:
+        raise ValueError(
+            f"Invalid file_type or metadata_level: {file_type}, {metadata_level}"
+        )
 
 
 def read_input_files(file_list: Path) -> List[Path]:
@@ -139,11 +158,17 @@ def process_file(
 
     # Generate output paths preserving directory structure
     output_profile_file = get_output_path(input_file, output_dir, "profiles")
-    output_metadata_file = get_output_path(input_file, output_dir, "metadata")
+    output_plate_metadata_file = get_output_path(
+        input_file, output_dir, "metadata", "plate"
+    )
+    output_well_metadata_file = get_output_path(
+        input_file, output_dir, "metadata", "well"
+    )
 
     # Create output directories if they don't exist
     output_profile_file.parent.mkdir(parents=True, exist_ok=True)
-    output_metadata_file.parent.mkdir(parents=True, exist_ok=True)
+    # Both metadata files will be in the same directory
+    output_plate_metadata_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Determine input file type using full name
     name = input_file.name.lower()
@@ -194,13 +219,14 @@ def process_file(
 
     logger.debug(f"Columns in output profile: {list(new_df.columns)}")
 
-    # Save as parquet
+    # Save profile as parquet
     new_df.to_parquet(output_profile_file)
     logger.info(f"Saved processed profile file to: {output_profile_file}")
 
-    # For now, we're just creating placeholder for the metadata file
-    # The actual implementation for the metadata file will be added later
-    logger.debug(f"Metadata file will be saved to: {output_metadata_file}")
+    # For now, we're just creating placeholders for the metadata files
+    # The actual implementation for the metadata files will be added later
+    logger.debug(f"Plate metadata file will be saved to: {output_plate_metadata_file}")
+    logger.debug(f"Well metadata file will be saved to: {output_well_metadata_file}")
 
     # Log column changes if in verbose mode
     if logger.getEffectiveLevel() <= logging.DEBUG:
