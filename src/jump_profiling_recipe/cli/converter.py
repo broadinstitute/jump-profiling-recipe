@@ -277,7 +277,7 @@ def process_files(
     help="Continue processing other files if an error occurs with one file",
 )
 @click.option(
-    "--required-metadata",
+    "--mandatory-metadata",
     type=str,
     default="Metadata_Plate,Metadata_Well",
     help="Comma-separated list of required metadata columns (default: 'Metadata_Plate,Metadata_Well')",
@@ -289,7 +289,7 @@ def convert_command(
     verbose: bool,
     mandatory_feature_cols_file: Optional[Path],
     continue_on_error: bool,
-    required_metadata: str = "Metadata_Plate,Metadata_Well",
+    mandatory_metadata: str = "Metadata_Plate,Metadata_Well",
 ):
     """Convert CSV/Parquet files to processed Parquet files.
 
@@ -327,7 +327,7 @@ def convert_command(
 
     # Parse required metadata columns
     mandatory_metadata_cols = [
-        col.strip() for col in required_metadata.split(",") if col.strip()
+        col.strip() for col in mandatory_metadata.split(",") if col.strip()
     ]
     logger.info(f"Using required metadata columns: {mandatory_metadata_cols}")
 
