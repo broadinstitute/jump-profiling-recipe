@@ -108,6 +108,7 @@ def process_file(
     source: str,
     mandatory_feature_cols: Optional[Set[str]] = None,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    jcp2022_col: Optional[str] = None,
 ) -> None:
     """
     Process a single input file and save it as parquet.
@@ -118,6 +119,7 @@ def process_file(
         source: Value to set in Metadata_Source column
         mandatory_feature_cols: Optional set of feature column names that must be included
         mandatory_metadata_cols: List of required metadata columns (default: ["Metadata_Plate", "Metadata_Well"])
+        jcp2022_col: Optional column to be treated as Metadata_JCP2022
     """
     logger.info(f"Processing file: {input_file}")
 
@@ -196,6 +198,7 @@ def process_files(
     mandatory_feature_cols: Optional[Set[str]] = None,
     continue_on_error: bool = False,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    jcp2022_col: Optional[str] = None,
 ) -> None:
     """Process multiple input files.
 
@@ -206,6 +209,7 @@ def process_files(
         mandatory_feature_cols: Optional set of feature column names that must be included
         continue_on_error: If True, continue processing other files when one fails
         mandatory_metadata_cols: List of required metadata columns to preserve
+        jcp2022_col: Optional column to be treated as Metadata_JCP2022
     """
     failures = 0
     start_time = time.time()
@@ -225,6 +229,7 @@ def process_files(
                 source,
                 mandatory_feature_cols,
                 mandatory_metadata_cols,
+                jcp2022_col,
             )
             file_elapsed = time.time() - file_start_time
             logger.debug(f"Processed {input_file} in {file_elapsed:.2f} seconds")
@@ -282,6 +287,12 @@ def process_files(
     default="Metadata_Plate,Metadata_Well",
     help="Comma-separated list of required metadata columns (default: 'Metadata_Plate,Metadata_Well')",
 )
+@click.option(
+    "--jcp2022-col",
+    type=str,
+    default=None,
+    help="Column to be treated as Metadata_JCP2022",
+)
 def convert_command(
     file_list: Path,
     output_dir: Path,
@@ -290,6 +301,7 @@ def convert_command(
     mandatory_feature_cols_file: Optional[Path],
     continue_on_error: bool,
     mandatory_metadata: str = "Metadata_Plate,Metadata_Well",
+    jcp2022_col: Optional[str] = None,
 ):
     """Convert CSV/Parquet files to processed Parquet files.
 
@@ -331,6 +343,10 @@ def convert_command(
     ]
     logger.info(f"Using required metadata columns: {mandatory_metadata_cols}")
 
+    # Log JCP2022 column if provided
+    if jcp2022_col:
+        logger.info(f"Using JCP2022 column: {jcp2022_col}")
+
     # Process files
     process_files(
         input_files,
@@ -339,6 +355,7 @@ def convert_command(
         mandatory_feature_cols,
         continue_on_error,
         mandatory_metadata_cols,
+        jcp2022_col,
     )
 
 
