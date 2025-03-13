@@ -16,13 +16,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_output_path(input_file: Path, output_dir: Path) -> Path:
+def get_output_path(
+    input_file: Path, output_dir: Path, file_type: str = "profiles"
+) -> Path:
     """
     Generate output path preserving two directory levels above the input file.
 
-    Example:
+    Example (for profiles):
         input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
         output: {output_dir}/profiles/2021_04_17_Batch1/BR00121331/BR00121331.parquet
+
+    Example (for metadata):
+        input:  a/b/c/d/2021_04_17_Batch1/BR00121331/BR00121331.csv.gz
+        output: {output_dir}/metadata/2021_04_17_Batch1/BR00121331/BR00121331.parquet
+
+    Args:
+        input_file: Path to input file
+        output_dir: Base output directory
+        file_type: Type of output file (profiles or metadata)
+
+    Returns:
+        Path to output file
     """
     # Get the last three parts of the path (two dirs + filename)
     parts = input_file.parts[-3:]
@@ -30,9 +44,9 @@ def get_output_path(input_file: Path, output_dir: Path) -> Path:
         # If path is not deep enough, just use available parts
         parts = input_file.parts
 
-    # Construct new path: output_dir/dir1/dir2/filename
+    # Construct new path: output_dir/file_type/dir1/dir2/filename
     relative_path = Path(*parts[:-1]) / input_file.stem
-    return output_dir / "profiles" / relative_path.with_suffix(".parquet")
+    return output_dir / file_type / relative_path.with_suffix(".parquet")
 
 
 def read_input_files(file_list: Path) -> List[Path]:
@@ -123,11 +137,13 @@ def process_file(
     """
     logger.info(f"Processing file: {input_file}")
 
-    # Generate output path preserving directory structure
-    output_file = get_output_path(input_file, output_dir)
+    # Generate output paths preserving directory structure
+    output_profile_file = get_output_path(input_file, output_dir, "profiles")
+    output_metadata_file = get_output_path(input_file, output_dir, "metadata")
 
-    # Create output directory if it doesn't exist
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    # Create output directories if they don't exist
+    output_profile_file.parent.mkdir(parents=True, exist_ok=True)
+    output_metadata_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Determine input file type using full name
     name = input_file.name.lower()
@@ -176,11 +192,15 @@ def process_file(
     # Combine metadata and feature columns efficiently
     new_df = pd.concat([metadata_df, feature_df], axis=1)
 
-    logger.debug(f"Columns in output: {list(new_df.columns)}")
+    logger.debug(f"Columns in output profile: {list(new_df.columns)}")
 
     # Save as parquet
-    new_df.to_parquet(output_file)
-    logger.info(f"Saved processed file to: {output_file}")
+    new_df.to_parquet(output_profile_file)
+    logger.info(f"Saved processed profile file to: {output_profile_file}")
+
+    # For now, we're just creating placeholder for the metadata file
+    # The actual implementation for the metadata file will be added later
+    logger.debug(f"Metadata file will be saved to: {output_metadata_file}")
 
     # Log column changes if in verbose mode
     if logger.getEffectiveLevel() <= logging.DEBUG:
