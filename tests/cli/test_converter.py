@@ -7,7 +7,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 from click.testing import CliRunner
-from jump_profiling_recipe.cli.converter import convert_command, read_mandatory_features
+from jump_profiling_recipe.cli.converter import (
+    convert_command,
+    read_mandatory_feature_cols,
+)
 
 # Ensure the repository root is on PYTHONPATH
 repo_root = Path(__file__).parent.parent.parent.absolute()
@@ -28,7 +31,7 @@ def input_file_path():
 
 
 @pytest.fixture
-def mandatory_features_path():
+def mandatory_feature_cols_file():
     """Path to the mandatory features file."""
     return Path("tests/fixtures/inputs/metadata/test_mandatory_feature_columns.txt")
 
@@ -50,7 +53,7 @@ def temp_file_list(input_file_path, tmp_path):
 
 
 def test_convert_command(
-    input_file_path, mandatory_features_path, temp_output_dir, temp_file_list
+    input_file_path, mandatory_feature_cols_file, temp_output_dir, temp_file_list
 ):
     """Test the convert command with a real input file."""
     # Skip test if input file doesn't exist
@@ -58,8 +61,8 @@ def test_convert_command(
         pytest.skip(f"Input file not found: {input_file_path}")
 
     # Skip test if mandatory features file doesn't exist
-    if not mandatory_features_path.exists():
-        pytest.skip(f"Mandatory features file not found: {mandatory_features_path}")
+    if not mandatory_feature_cols_file.exists():
+        pytest.skip(f"Mandatory features file not found: {mandatory_feature_cols_file}")
 
     # Run the convert command
     runner = CliRunner()
@@ -71,8 +74,8 @@ def test_convert_command(
             str(temp_output_dir),
             "--source",
             "source_4",
-            "--mandatory-features-file",
-            str(mandatory_features_path),
+            "--mandatory-feature-cols-file",
+            str(mandatory_feature_cols_file),
             "--verbose",
         ],
     )
@@ -95,7 +98,7 @@ def test_convert_command(
     converted_df = pd.read_parquet(expected_output_path)
 
     # Load mandatory features
-    mandatory_features = read_mandatory_features(mandatory_features_path)
+    mandatory_features = read_mandatory_feature_cols(mandatory_feature_cols_file)
 
     # Verify that the output file has the expected structure
     # 1. Should have Metadata_Source column with value "source_4"

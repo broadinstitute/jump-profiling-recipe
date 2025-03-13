@@ -75,7 +75,7 @@ def read_input_files(file_list: Path) -> List[Path]:
     return files
 
 
-def read_mandatory_features(feature_file: Path) -> Set[str]:
+def read_mandatory_feature_cols(feature_file: Path) -> Set[str]:
     """Read mandatory feature names from a file.
 
     Args:
@@ -106,8 +106,8 @@ def process_file(
     input_file: Path,
     output_dir: Path,
     source: str,
-    mandatory_features: Optional[Set[str]] = None,
-    required_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    mandatory_feature_cols: Optional[Set[str]] = None,
+    mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
 ) -> None:
     """
     Process a single input file and save it as parquet.
@@ -116,8 +116,8 @@ def process_file(
         input_file: Path to input file
         output_dir: Directory to save output
         source: Value to set in Metadata_Source column
-        mandatory_features: Optional set of feature column names that must be included
-        required_metadata_cols: List of required metadata columns (default: ["Metadata_Plate", "Metadata_Well"])
+        mandatory_feature_cols: Optional set of feature column names that must be included
+        mandatory_metadata_cols: List of required metadata columns (default: ["Metadata_Plate", "Metadata_Well"])
     """
     logger.info(f"Processing file: {input_file}")
 
@@ -137,7 +137,7 @@ def process_file(
         raise ValueError(f"Unsupported file format: {input_file}")
 
     # Ensure required Metadata columns exist
-    for col in required_metadata_cols:
+    for col in mandatory_metadata_cols:
         if col not in df.columns:
             raise click.ClickException(
                 f"Required column '{col}' not found in {input_file}"
@@ -145,7 +145,7 @@ def process_file(
 
     # Prepare the metadata columns
     metadata_dict = {"Metadata_Source": [source] * len(df)}
-    for col in required_metadata_cols:
+    for col in mandatory_metadata_cols:
         metadata_dict[col] = df[col]
 
     metadata_df = pd.DataFrame(metadata_dict)
@@ -154,17 +154,17 @@ def process_file(
     feature_cols = [col for col in df.columns if not col.startswith("Metadata_")]
 
     # If mandatory features are specified, check for missing ones and filter
-    if mandatory_features:
-        missing_features = mandatory_features - set(feature_cols)
+    if mandatory_feature_cols:
+        missing_features = mandatory_feature_cols - set(feature_cols)
         if missing_features:
             logger.warning(
                 f"Missing mandatory features in {input_file}: {sorted(missing_features)}"
             )
 
         # Filter to keep only mandatory features (that exist in the data)
-        feature_cols = [col for col in feature_cols if col in mandatory_features]
+        feature_cols = [col for col in feature_cols if col in mandatory_feature_cols]
         logger.info(
-            f"Keeping {len(feature_cols)} out of {len(mandatory_features)} mandatory features for {input_file}"
+            f"Keeping {len(feature_cols)} out of {len(mandatory_feature_cols)} mandatory features for {input_file}"
         )
         if not feature_cols:
             logger.warning(f"No mandatory features found in {input_file}")
@@ -184,7 +184,7 @@ def process_file(
     if logger.getEffectiveLevel() <= logging.DEBUG:
         dropped_metadata = set(
             col for col in df.columns if col.startswith("Metadata_")
-        ) - set(required_metadata_cols)
+        ) - set(mandatory_metadata_cols)
         if dropped_metadata:
             logger.debug(f"Dropped metadata columns: {sorted(dropped_metadata)}")
 
@@ -193,9 +193,9 @@ def process_files(
     input_files: List[Path],
     output_dir: Path,
     source: str,
-    mandatory_features: Optional[Set[str]] = None,
+    mandatory_feature_cols: Optional[Set[str]] = None,
     continue_on_error: bool = False,
-    required_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
 ) -> None:
     """Process multiple input files.
 
@@ -203,9 +203,9 @@ def process_files(
         input_files: List of input file paths
         output_dir: Directory to save output files
         source: Value to set in Metadata_Source column
-        mandatory_features: Optional set of feature column names that must be included
+        mandatory_feature_cols: Optional set of feature column names that must be included
         continue_on_error: If True, continue processing other files when one fails
-        required_metadata_cols: List of required metadata columns to preserve
+        mandatory_metadata_cols: List of required metadata columns to preserve
     """
     failures = 0
     start_time = time.time()
@@ -223,8 +223,8 @@ def process_files(
                 input_file,
                 output_dir,
                 source,
-                mandatory_features,
-                required_metadata_cols,
+                mandatory_feature_cols,
+                mandatory_metadata_cols,
             )
             file_elapsed = time.time() - file_start_time
             logger.debug(f"Processed {input_file} in {file_elapsed:.2f} seconds")
@@ -267,7 +267,7 @@ def process_files(
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging")
 @click.option(
     "-m",
-    "--mandatory-features-file",
+    "--mandatory-feature-cols-file",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Path to file containing mandatory feature names (one per line). If provided, only these features will be included.",
 )
@@ -287,7 +287,7 @@ def convert_command(
     output_dir: Path,
     source: str,
     verbose: bool,
-    mandatory_features_file: Optional[Path],
+    mandatory_feature_cols_file: Optional[Path],
     continue_on_error: bool,
     required_metadata: str = "Metadata_Plate,Metadata_Well",
 ):
@@ -315,28 +315,30 @@ def convert_command(
         logging.getLogger().setLevel(logging.DEBUG)
 
     # Process mandatory features if file provided
-    mandatory_feature_set = None
-    if mandatory_features_file:
-        mandatory_feature_set = read_mandatory_features(mandatory_features_file)
+    mandatory_feature_cols = None
+    if mandatory_feature_cols_file:
+        mandatory_feature_cols = read_mandatory_feature_cols(
+            mandatory_feature_cols_file
+        )
 
     # Read and validate input files
     input_files = read_input_files(file_list)
     logger.info(f"Found {len(input_files)} valid input files")
 
     # Parse required metadata columns
-    required_metadata_cols = [
+    mandatory_metadata_cols = [
         col.strip() for col in required_metadata.split(",") if col.strip()
     ]
-    logger.info(f"Using required metadata columns: {required_metadata_cols}")
+    logger.info(f"Using required metadata columns: {mandatory_metadata_cols}")
 
     # Process files
     process_files(
         input_files,
         output_dir,
         source,
-        mandatory_feature_set,
+        mandatory_feature_cols,
         continue_on_error,
-        required_metadata_cols,
+        mandatory_metadata_cols,
     )
 
 
