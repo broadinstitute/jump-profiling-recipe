@@ -196,7 +196,10 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
     configs = meta["Metadata_Source"].map(MICRO_CONFIG)
     if configs.isna().any():
         missing_sources = meta["Metadata_Source"][configs.isna()].unique()
-        raise ValueError(f"Missing microscope config for sources: {missing_sources}")
+        logger.warning(
+            f"Missing microscope config for sources: {missing_sources}. Setting to 'UNKNOWN'."
+        )
+        configs = configs.fillna("UNKNOWN")
 
     meta["Metadata_Microscope"] = configs.astype("category")
 
