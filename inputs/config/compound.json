@@ -20,7 +20,6 @@
         "TARGET2"
     ],
     "batch_key": "Metadata_Batch",
-    "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 25
 }
