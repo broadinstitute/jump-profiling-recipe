@@ -88,6 +88,33 @@ def mock_csv_with_jcp2022(tmp_path):
     return file_list_path
 
 
+@pytest.fixture
+def mock_csv_with_multiple_jcp2022_cols(tmp_path):
+    """Create a mock CSV file with multiple columns for JCP2022 concatenation."""
+    file_path = tmp_path / "2021_04_26_Batch1" / "BR00117037" / "mock_multi_data.csv"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Create a dataframe with minimal required columns and multiple JCP2022-related columns
+    df = pd.DataFrame(
+        {
+            "Metadata_Plate": ["PLATE001"] * 3,
+            "Metadata_Well": ["A01", "A02", "A03"],
+            "Compound_ID": ["C123", "C456", "C789"],
+            "Concentration": ["10nM", "100nM", "1uM"],
+            "Feature1": [1.0, 2.0, 3.0],
+        }
+    )
+
+    df.to_csv(file_path, index=False)
+
+    # Create a file list for this mock CSV
+    file_list_path = tmp_path / "mock_multi_file_list.txt"
+    with open(file_list_path, "w") as f:
+        f.write(str(file_path.absolute()))
+
+    return file_list_path
+
+
 def test_extract_batch_from_path():
     """Test the extract_batch_from_path function."""
     # Test with a typical path structure
@@ -268,7 +295,7 @@ def test_jcp2022_handling(mock_csv_with_jcp2022, temp_output_dir):
             "--source",
             "test_source",
             "--verbose",
-            "--jcp2022-col",
+            "--jcp2022-cols",
             "JCP2022_ID",
         ],
     )
@@ -318,6 +345,54 @@ def test_jcp2022_handling(mock_csv_with_jcp2022, temp_output_dir):
 
     # Verify plate type is properly set from the source data
     assert plate_df["Metadata_PlateType"].iloc[0] == "COMPOUND"
+
+
+def test_multiple_jcp2022_cols_concatenation(
+    mock_csv_with_multiple_jcp2022_cols, temp_output_dir
+):
+    """Test the concatenation of multiple columns for JCP2022."""
+    # Run the convert command with multiple JCP2022 columns specified
+    runner = CliRunner()
+    result = runner.invoke(
+        convert_command,
+        [
+            str(mock_csv_with_multiple_jcp2022_cols),
+            "--output-dir",
+            str(temp_output_dir),
+            "--source",
+            "test_source",
+            "--verbose",
+            "--jcp2022-cols",
+            "Compound_ID,Concentration",  # Specify multiple columns
+        ],
+    )
+
+    # Check that the command ran successfully
+    assert result.exit_code == 0, f"Command failed with error: {result.output}"
+
+    # Get the output well metadata file
+    well_metadata_path = (
+        temp_output_dir
+        / "metadata"
+        / "2021_04_26_Batch1"
+        / "BR00117037"
+        / "well.parquet"
+    )
+    assert well_metadata_path.exists(), (
+        f"Well metadata file not created: {well_metadata_path}"
+    )
+
+    # Read the well metadata
+    well_df = pd.read_parquet(well_metadata_path)
+
+    # Verify JCP2022 column is properly populated with concatenated values
+    assert "Metadata_JCP2022" in well_df.columns
+
+    # We should have 3 unique JCP2022 values with the expected concatenation format
+    expected_values = {"C123:10nM", "C456:100nM", "C789:1uM"}
+    assert set(well_df["Metadata_JCP2022"]) == expected_values, (
+        f"Expected concatenated values {expected_values}, got {set(well_df['Metadata_JCP2022'])}"
+    )
 
 
 def test_multiple_plates_error(tmp_path, temp_output_dir):
