@@ -76,6 +76,7 @@ def test_workspace(tmp_path_factory):
         "crispr_trimmed",
         "pipeline_1_trimmed",
         "orf_cpcnn_trimmed",
+        "compound_new_data",
     ],
 )
 def test_full_pipeline(test_workspace, pipeline_name):
@@ -117,6 +118,10 @@ def test_full_pipeline(test_workspace, pipeline_name):
         "orf_cpcnn_trimmed": {
             "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
             "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
+        "compound_new_data": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
         },
     }
 
