@@ -272,23 +272,56 @@ def process_file(
         # Check if all specified columns exist
         missing_cols = [col for col in cols_list if col not in df.columns]
         if missing_cols:
-            logger.warning(f"JCP2022 columns not found in {input_file}: {missing_cols}")
-            well_metadata["Metadata_JCP2022"] = [""] * len(df)
+            # Instead of setting empty values and logging a warning, raise an error
+            raise click.ClickException(
+                f"JCP2022 columns not found in {input_file}: {missing_cols}. "
+                f"All JCP2022 columns must exist in the input file."
+            )
+        # For a single column, just use its values
+        elif len(cols_list) == 1:
+            well_metadata["Metadata_JCP2022"] = df[cols_list[0]]
+        # For multiple columns, concatenate values with ":" as delimiter
         else:
-            # For a single column, just use its values
-            if len(cols_list) == 1:
-                well_metadata["Metadata_JCP2022"] = df[cols_list[0]]
-            # For multiple columns, concatenate values with ":" as delimiter
-            else:
-                well_metadata["Metadata_JCP2022"] = (
-                    df[cols_list].astype(str).apply(lambda row: ":".join(row), axis=1)
-                )
+            well_metadata["Metadata_JCP2022"] = (
+                df[cols_list].astype(str).apply(lambda row: ":".join(row), axis=1)
+            )
     else:
-        # If jcp2022_cols is not specified, create an empty column
-        well_metadata["Metadata_JCP2022"] = [""] * len(df)
+        # If jcp2022_cols is not specified, raise an error instead of creating an empty column
+        raise click.ClickException(
+            f"No JCP2022 columns specified for {input_file}. "
+            f"Please specify JCP2022 columns using the --jcp2022-cols option."
+        )
 
-    # Create well metadata DataFrame and remove duplicates
-    well_df = pd.DataFrame(well_metadata).drop_duplicates()
+    # Create well metadata DataFrame
+    well_df = pd.DataFrame(well_metadata)
+
+    # Check for empty Metadata_JCP2022 values (NULL/NA/NaN values or empty strings)
+    empty_jcp2022 = pd.isna(well_df["Metadata_JCP2022"]) | (
+        well_df["Metadata_JCP2022"].astype(str).str.strip() == ""
+    )
+
+    if empty_jcp2022.any():
+        empty_count = empty_jcp2022.sum()
+
+        # Show some examples of the empty values (up to 5)
+        empty_examples = well_df[empty_jcp2022].head(5)
+        example_str = "\n".join(
+            f"  Plate: {row['Metadata_Plate']}, Well: {row['Metadata_Well']}, "
+            f"JCP2022 Value: '{row['Metadata_JCP2022']}'"
+            for _, row in empty_examples.iterrows()
+        )
+
+        warning_msg = (
+            f"Found {empty_count} wells with empty Metadata_JCP2022 values in {input_file}.\n"
+            f"Examples of wells with empty values:\n{example_str}\n"
+            f"These will be replaced with 'UNSPECIFIED'"
+        )
+        logger.warning(warning_msg)
+
+        # Replace empty values with UNSPECIFIED
+        # We intentionally do not replace with JCP2022_UNKNOWN because the current implementation
+        # of get_well_metadata filters out JCP2022_UNKNOWN wells.
+        well_df.loc[empty_jcp2022, "Metadata_JCP2022"] = "UNSPECIFIED"
 
     # Save well metadata
     well_df.to_parquet(output_well_metadata_file)
