@@ -12,7 +12,6 @@
     ],
     "search_additional_metadata": true,
     "batch_key": "Metadata_Plate",
-    "label_key": "Metadata_JCP2022",
     "sphering_method": "ZCA-cor",
     "sphering_n_opts": 2
 }
