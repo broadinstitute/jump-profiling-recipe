@@ -244,9 +244,10 @@ def find_metadata_files(sources: list[str], metadata_type: str) -> list[str]:
 
     Notes
     -----
-    This function searches for metadata in two locations:
+    This function searches for metadata in one location:
     1. Global metadata: inputs/profiles/{source}/workspace/metadata/{type}.parquet
-    2. Plate-specific metadata: inputs/profiles/{source}/workspace/metadata/{batch}/{plate}/{type}.parquet
+
+    Plate-specific metadata is excluded from the search.
     """
     if metadata_type not in ["plate", "well"]:
         raise ValueError(
@@ -255,7 +256,7 @@ def find_metadata_files(sources: list[str], metadata_type: str) -> list[str]:
 
     found_files = []
 
-    # Search for global metadata files
+    # Search for global metadata files only
     for source in sources:
         global_pattern = (
             f"./inputs/profiles/{source}/workspace/metadata/{metadata_type}.parquet"
@@ -263,16 +264,9 @@ def find_metadata_files(sources: list[str], metadata_type: str) -> list[str]:
         global_files = glob.glob(global_pattern)
         found_files.extend(global_files)
 
-        # Search for plate-specific metadata files
-        plate_pattern = (
-            f"./inputs/profiles/{source}/workspace/metadata/**/{metadata_type}.parquet"
-        )
-        plate_files = glob.glob(plate_pattern, recursive=True)
-        # Filter out global metadata files that might be found again
-        specific_files = [f for f in plate_files if f not in global_files]
-        found_files.extend(specific_files)
-
-    logger.info(f"Found {len(found_files)} additional {metadata_type} metadata files")
+    logger.info(
+        f"Found {len(found_files)} additional {metadata_type} metadata files (global only)"
+    )
     return found_files
 
 
