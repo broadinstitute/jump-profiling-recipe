@@ -192,7 +192,9 @@ def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
     return redlist
 
 
-def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def get_plate_metadata(
+    sources: list[str], plate_types: list[str], additional_plate_files: list[str] = None
+) -> pd.DataFrame:
     """Create filtered metadata DataFrame from plate-level metadata.
 
     Loads plate metadata from './inputs/metadata/plate.csv.gz' and applies filtering based on
@@ -207,6 +209,9 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     plate_types : list[str]
         List of plate types to include (e.g., ['ORF', 'CRISPR', 'TARGET2']).
         Must match values in the Metadata_PlateType column.
+    additional_plate_files : list[str], optional
+        List of paths to additional parquet files containing plate metadata to be loaded
+        and concatenated with the default CSV data.
 
     Returns
     -------
@@ -225,7 +230,17 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     - For ORF plates: Excludes plates in the redlist from get_orf_plate_redlist()
     - For source_3: Excludes batches in SOURCE3_BATCH_REDLIST unless plate type is TARGET2
     """
+    # Load default CSV data
     plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
+
+    # Load and concatenate additional parquet files if provided
+    if additional_plate_files:
+        additional_dfs = [pd.read_parquet(file) for file in additional_plate_files]
+        if additional_dfs:
+            additional_dfs.insert(
+                0, plate_metadata
+            )  # Add default data at the beginning
+            plate_metadata = pd.concat(additional_dfs, ignore_index=True)
 
     required_cols = [
         "Metadata_Source",
@@ -253,7 +268,9 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     return plate_metadata
 
 
-def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
+def get_well_metadata(
+    plate_types: list[str], additional_well_files: list[str] = None
+) -> pd.DataFrame:
     """Load and process well-level metadata with optional ORF/CRISPR annotations.
 
     Loads well metadata from './inputs/metadata/well.csv.gz' and optionally merges with
@@ -265,6 +282,9 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
         List of plate types to process (e.g., ['ORF', 'CRISPR', 'TARGET2']).
         If 'ORF' is included, merges with ORF metadata from './inputs/metadata/orf.csv.gz'.
         If 'CRISPR' is included, merges with CRISPR metadata from './inputs/metadata/crispr.csv.gz'.
+    additional_well_files : list[str], optional
+        List of paths to additional parquet files containing well metadata to be loaded
+        and concatenated with the default CSV data.
 
     Returns
     -------
@@ -284,7 +304,16 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
     The function performs left joins when merging ORF/CRISPR metadata, meaning wells
     without matching ORF/CRISPR data will have NULL values in the merged columns.
     """
+    # Load default CSV data
     well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
+
+    # Load and concatenate additional parquet files if provided
+    if additional_well_files:
+        additional_dfs = [pd.read_parquet(file) for file in additional_well_files]
+        if additional_dfs:
+            additional_dfs.insert(0, well_metadata)  # Add default data at the beginning
+            well_metadata = pd.concat(additional_dfs, ignore_index=True)
+
     validate_columns(well_metadata, ["Metadata_JCP2022"])
 
     if "ORF" in plate_types:
@@ -312,7 +341,12 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
 # ------------------------------
 
 
-def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def load_metadata(
+    sources: list[str],
+    plate_types: list[str],
+    additional_plate_files: list[str] = None,
+    additional_well_files: list[str] = None,
+) -> pd.DataFrame:
     """Load and merge plate and well metadata.
 
     Parameters
@@ -321,6 +355,10 @@ def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         List of source identifiers to include.
     plate_types : list[str]
         List of plate types to include.
+    additional_plate_files : list[str], optional
+        List of paths to additional parquet files containing plate metadata.
+    additional_well_files : list[str], optional
+        List of paths to additional parquet files containing well metadata.
 
     Returns
     -------
@@ -328,7 +366,7 @@ def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         Merged metadata DataFrame containing both plate and well information,
         filtered according to the specified sources and plate types.
     """
-    plate = get_plate_metadata(sources, plate_types)
-    well = get_well_metadata(plate_types)
+    plate = get_plate_metadata(sources, plate_types, additional_plate_files)
+    well = get_well_metadata(plate_types, additional_well_files)
     meta = well.merge(plate, on=["Metadata_Source", "Metadata_Plate"])
     return meta
