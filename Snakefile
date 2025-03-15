@@ -38,8 +38,7 @@ rule write_parquet:
             config["plate_types"],
             output[0],
             profile_type=config.get("profile_type"),
-            additional_plate_metadata_files=config.get("additional_plate_metadata_files"),
-            additional_well_metadata_files=config.get("additional_well_metadata_files")
+            search_additional_metadata=config.get("search_additional_metadata", False)
         )
 
 
