@@ -593,6 +593,15 @@ def convert_command(
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
+    # Check if output directory exists and is not empty
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise click.ClickException(
+            f"Output directory '{output_dir}' is not empty. Please provide an empty directory."
+        )
+
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     # Process mandatory features if file provided
     mandatory_feature_cols = None
     if mandatory_feature_cols_file:
