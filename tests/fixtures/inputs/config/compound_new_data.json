@@ -1,0 +1,18 @@
+{
+    "scenario": "compound_new_data",
+    "pipeline": "profiles_var_mad_int_featselect_harmony",
+    "keep_image_features": false,
+    "use_mad_negcon": false,
+    "sources": [
+        "source_molglue",
+        "source_5"
+    ],
+    "plate_types": [
+        "COMPOUND"
+    ],
+    "search_additional_metadata": true,
+    "batch_key": "Metadata_Plate",
+    "label_key": "Metadata_JCP2022",
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 2
+}
