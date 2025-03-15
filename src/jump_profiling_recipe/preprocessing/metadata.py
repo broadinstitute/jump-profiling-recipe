@@ -13,7 +13,6 @@ import pandas as pd
 import re
 from .utils import validate_columns
 from collections.abc import Iterable
-from pathlib import Path
 import glob
 
 
