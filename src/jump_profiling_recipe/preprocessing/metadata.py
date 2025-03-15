@@ -154,6 +154,53 @@ def build_path(row: pd.Series, profile_type: str | None = None) -> str:
     return template.format(**row.to_dict())
 
 
+def _load_and_concat_data(
+    default_csv_path: str,
+    additional_parquet_files: list[str] = None,
+    description: str = "data",
+) -> pd.DataFrame:
+    """Helper function to load a CSV file and additional parquet files, then concatenate them.
+
+    Parameters
+    ----------
+    default_csv_path : str
+        Path to the default CSV file to load
+    additional_parquet_files : list[str], optional
+        List of additional parquet files to load and concatenate
+    description : str, optional
+        Description of the data being loaded, used in error messages
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenated data from default CSV and additional parquet files
+
+    Raises
+    ------
+    ValueError
+        If duplicates are found after concatenation
+    """
+    # Load default CSV data
+    data = pd.read_csv(default_csv_path)
+
+    # Load and concatenate additional parquet files if provided
+    if additional_parquet_files:
+        additional_dfs = [pd.read_parquet(file) for file in additional_parquet_files]
+        if additional_dfs:
+            additional_dfs.insert(0, data)  # Add default data at the beginning
+            data = pd.concat(additional_dfs, ignore_index=True)
+
+            # Check for duplicates after concatenation
+            duplicate_mask = data.duplicated(keep=False)
+            if duplicate_mask.any():
+                raise ValueError(
+                    f"Duplicate {description} found after concatenation. "
+                    f"There are {duplicate_mask.sum()} duplicated rows."
+                )
+
+    return data
+
+
 # ------------------------------
 # Metadata Loading
 # ------------------------------
@@ -223,6 +270,7 @@ def get_plate_metadata(
     ------
     ValueError
         If any required columns are missing from the plate metadata file.
+        If duplicate rows are found after concatenation.
 
     Notes
     -----
@@ -230,17 +278,10 @@ def get_plate_metadata(
     - For ORF plates: Excludes plates in the redlist from get_orf_plate_redlist()
     - For source_3: Excludes batches in SOURCE3_BATCH_REDLIST unless plate type is TARGET2
     """
-    # Load default CSV data
-    plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
-
-    # Load and concatenate additional parquet files if provided
-    if additional_plate_files:
-        additional_dfs = [pd.read_parquet(file) for file in additional_plate_files]
-        if additional_dfs:
-            additional_dfs.insert(
-                0, plate_metadata
-            )  # Add default data at the beginning
-            plate_metadata = pd.concat(additional_dfs, ignore_index=True)
+    # Load and check for duplicates
+    plate_metadata = _load_and_concat_data(
+        "./inputs/metadata/plate.csv.gz", additional_plate_files, description="plates"
+    )
 
     required_cols = [
         "Metadata_Source",
@@ -298,21 +339,17 @@ def get_well_metadata(
     ------
     ValueError
         If Metadata_JCP2022 column is missing from the well metadata file.
+        If duplicate rows are found after concatenation.
 
     Notes
     -----
     The function performs left joins when merging ORF/CRISPR metadata, meaning wells
     without matching ORF/CRISPR data will have NULL values in the merged columns.
     """
-    # Load default CSV data
-    well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
-
-    # Load and concatenate additional parquet files if provided
-    if additional_well_files:
-        additional_dfs = [pd.read_parquet(file) for file in additional_well_files]
-        if additional_dfs:
-            additional_dfs.insert(0, well_metadata)  # Add default data at the beginning
-            well_metadata = pd.concat(additional_dfs, ignore_index=True)
+    # Load and check for duplicates
+    well_metadata = _load_and_concat_data(
+        "./inputs/metadata/well.csv.gz", additional_well_files, description="wells"
+    )
 
     validate_columns(well_metadata, ["Metadata_JCP2022"])
 
