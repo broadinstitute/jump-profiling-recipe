@@ -196,7 +196,10 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
     configs = meta["Metadata_Source"].map(MICRO_CONFIG)
     if configs.isna().any():
         missing_sources = meta["Metadata_Source"][configs.isna()].unique()
-        raise ValueError(f"Missing microscope config for sources: {missing_sources}")
+        logger.warning(
+            f"Missing microscope config for sources: {missing_sources}. Setting to 'UNKNOWN'."
+        )
+        configs = configs.fillna("UNKNOWN")
 
     meta["Metadata_Microscope"] = configs.astype("category")
 
@@ -207,7 +210,10 @@ def add_microscopy_info(meta: pd.DataFrame) -> None:
 
 
 def prealloc_params(
-    sources: list[str], plate_types: list[str], profile_type: str | None = None
+    sources: list[str],
+    plate_types: list[str],
+    profile_type: str | None = None,
+    search_additional_metadata: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Get paths to parquet files and corresponding slices for concatenation.
 
@@ -229,6 +235,8 @@ def prealloc_params(
         List of plate types
     profile_type : str | None
         If provided, indicates a deep learning profile type
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata in the profiles directory structure
 
     Returns
     -------
@@ -238,7 +246,11 @@ def prealloc_params(
         2D array of slice indices with shape (n_files, 2), where each row is
         [start_idx, end_idx] for positioning that file's data in the final array
     """
-    meta = load_metadata(sources, plate_types)
+    meta = load_metadata(
+        sources,
+        plate_types,
+        search_additional_metadata,
+    )
     paths = (
         meta[["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]]
         .drop_duplicates()
@@ -270,7 +282,10 @@ def prealloc_params(
 
 
 def load_data(
-    sources: list[str], plate_types: list[str], profile_type: str | None = None
+    sources: list[str],
+    plate_types: list[str],
+    profile_type: str | None = None,
+    search_additional_metadata: bool = False,
 ) -> pd.DataFrame:
     """Load all plates given the parameters.
 
@@ -282,6 +297,8 @@ def load_data(
         List of plate types
     profile_type : str | None
         If provided, indicates a deep learning profile type
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata in the profiles directory structure
 
     Returns
     -------
@@ -289,8 +306,12 @@ def load_data(
         Combined DataFrame containing all plates' data
     """
     # TODO: allow for other ways of storing embeddings, like one per channel
-
-    paths, slices = prealloc_params(sources, plate_types, profile_type)
+    paths, slices = prealloc_params(
+        sources,
+        plate_types,
+        profile_type,
+        search_additional_metadata,
+    )
     total = slices[-1, 1]
 
     # Only open the parquet file once to check schema
@@ -362,6 +383,7 @@ def write_parquet(
     plate_types: list[str],
     output_file: str,
     profile_type: str | None = None,
+    search_additional_metadata: bool = False,
 ) -> None:
     """Write a combined and preprocessed parquet dataset from multiple source plates.
 
@@ -383,15 +405,30 @@ def write_parquet(
         Path where to save the output parquet file
     profile_type : str | None
         If provided, indicates a deep learning profile type
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata in the profiles directory structure
+
+    Returns
+    -------
+    None
     """
-    dframe = load_data(sources, plate_types, profile_type)
+    dframe = load_data(
+        sources,
+        plate_types,
+        profile_type,
+        search_additional_metadata,
+    )
 
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]
     dframe.drop(image_col, axis=1, inplace=True)
 
     # Get metadata
-    meta = load_metadata(sources, plate_types)
+    meta = load_metadata(
+        sources,
+        plate_types,
+        search_additional_metadata,
+    )
     add_pert_type(meta)
     add_row_col(meta)
     add_microscopy_info(meta)

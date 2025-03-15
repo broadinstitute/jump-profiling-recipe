@@ -41,13 +41,12 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 
-@pytest.fixture
-def test_workspace(tmp_path):
+@pytest.fixture(scope="session")
+def test_workspace(tmp_path_factory):
     """
     Set up a temporary working directory with necessary files copied from the fixtures folder
     """
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
+    workspace = tmp_path_factory.mktemp("workspace")
 
     # Copy profiles directory
     # TODO: Move the profiles to a subfolder of inputs then update paths below
@@ -61,7 +60,9 @@ def test_workspace(tmp_path):
     shutil.copytree(root_dir / "rules", workspace / "rules")
     for subfolder in ["cell_counts", "metadata"]:
         shutil.copytree(
-            root_dir / "inputs" / subfolder, workspace / "inputs" / subfolder
+            root_dir / "inputs" / subfolder,
+            workspace / "inputs" / subfolder,
+            dirs_exist_ok=True,  # because metadata is already present in fixtures
         )
 
     return workspace
@@ -75,6 +76,7 @@ def test_workspace(tmp_path):
         "crispr_trimmed",
         "pipeline_1_trimmed",
         "orf_cpcnn_trimmed",
+        "compound_new_data",
     ],
 )
 def test_full_pipeline(test_workspace, pipeline_name):
@@ -116,6 +118,10 @@ def test_full_pipeline(test_workspace, pipeline_name):
         "orf_cpcnn_trimmed": {
             "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
             "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+        },
+        "compound_new_data": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
         },
     }
 

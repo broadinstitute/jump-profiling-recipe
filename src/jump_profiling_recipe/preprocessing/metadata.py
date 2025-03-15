@@ -13,6 +13,7 @@ import pandas as pd
 import re
 from .utils import validate_columns
 from collections.abc import Iterable
+import glob
 
 
 logger = logging.getLogger(__name__)
@@ -154,6 +155,127 @@ def build_path(row: pd.Series, profile_type: str | None = None) -> str:
     return template.format(**row.to_dict())
 
 
+def _load_and_concat_data(
+    default_csv_path: str,
+    additional_parquet_files: list[str] = None,
+    search_additional_metadata: bool = False,
+    sources: list[str] = None,
+    metadata_type: str = None,
+) -> pd.DataFrame:
+    """Helper function to load a CSV file and additional parquet files, then concatenate them.
+
+    Parameters
+    ----------
+    default_csv_path : str
+        Path to the default CSV file to load
+    additional_parquet_files : list[str], optional
+        List of additional parquet files to load and concatenate
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata files
+    sources : list[str], optional
+        Source identifiers to search within if search_additional_metadata is True
+    metadata_type : str, optional
+        Type of metadata to search for and load ('plate', 'well', or custom type).
+        Also used for error messages. Defaults to None if not specified.
+
+    Returns
+    -------
+    pd.DataFrame
+        Concatenated data from default CSV and additional parquet files
+
+    Raises
+    ------
+    ValueError
+        If duplicates are found after concatenation
+        If search_additional_metadata is True but required parameters are missing
+    """
+    # Load default CSV data
+    data = pd.read_csv(default_csv_path)
+
+    # Search for additional metadata files if requested
+    files_to_load = additional_parquet_files or []
+
+    if search_additional_metadata:
+        if not sources:
+            raise ValueError(
+                "sources must be provided when search_additional_metadata is True"
+            )
+        if metadata_type is None:
+            raise ValueError(
+                "metadata_type must be specified when search_additional_metadata is True"
+            )
+
+        found_files = find_metadata_files(sources, metadata_type)
+        if found_files:
+            files_to_load.extend(found_files)
+
+    # Load and concatenate additional parquet files if available
+    if files_to_load:
+        additional_dfs = [pd.read_parquet(file) for file in files_to_load]
+        if additional_dfs:
+            additional_dfs.insert(0, data)  # Add default data at the beginning
+            data = pd.concat(additional_dfs, ignore_index=True)
+
+            # Check for duplicates after concatenation
+            duplicate_mask = data.duplicated(keep=False)
+            if duplicate_mask.any():
+                raise ValueError(
+                    f"Duplicate {metadata_type or 'data'} found after concatenation. "
+                    f"There are {duplicate_mask.sum()} duplicated rows."
+                )
+
+    return data
+
+
+def find_metadata_files(sources: list[str], metadata_type: str) -> list[str]:
+    """Search for additional metadata files in the profiles directory structure.
+
+    Parameters
+    ----------
+    sources : list[str]
+        List of source identifiers to search within (e.g., ['source_1', 'source_2'])
+    metadata_type : str
+        Type of metadata to find, must be either 'plate' or 'well'
+
+    Returns
+    -------
+    list[str]
+        List of paths to found metadata files
+
+    Notes
+    -----
+    This function searches for metadata in two locations:
+    1. Global metadata: inputs/profiles/{source}/workspace/metadata/{type}.parquet
+    2. Plate-specific metadata: inputs/profiles/{source}/workspace/metadata/{batch}/{plate}/{type}.parquet
+    """
+    if metadata_type not in ["plate", "well"]:
+        raise ValueError(
+            f"metadata_type must be 'plate' or 'well', got '{metadata_type}'"
+        )
+
+    found_files = []
+
+    # Search for global metadata files
+    for source in sources:
+        global_pattern = (
+            f"./inputs/profiles/{source}/workspace/metadata/{metadata_type}.parquet"
+        )
+        global_files = glob.glob(global_pattern)
+        found_files.extend(global_files)
+
+        # Search for plate-specific metadata files
+        plate_pattern = (
+            f"./inputs/profiles/{source}/workspace/metadata/**/{metadata_type}.parquet"
+        )
+        plate_files = glob.glob(plate_pattern, recursive=True)
+        # Filter out global metadata files that might be found again
+        specific_files = [f for f in plate_files if f not in global_files]
+        found_files.extend(specific_files)
+
+    logger.info(f"Found {len(found_files)} additional {metadata_type} metadata files")
+    return found_files
+
+
 # ------------------------------
 # Metadata Loading
 # ------------------------------
@@ -192,7 +314,11 @@ def get_orf_plate_redlist(plate_types: list[str]) -> set[str]:
     return redlist
 
 
-def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def get_plate_metadata(
+    sources: list[str],
+    plate_types: list[str],
+    search_additional_metadata: bool = False,
+) -> pd.DataFrame:
     """Create filtered metadata DataFrame from plate-level metadata.
 
     Loads plate metadata from './inputs/metadata/plate.csv.gz' and applies filtering based on
@@ -207,6 +333,9 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     plate_types : list[str]
         List of plate types to include (e.g., ['ORF', 'CRISPR', 'TARGET2']).
         Must match values in the Metadata_PlateType column.
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata files in the profiles directory
+        structure based on the given sources.
 
     Returns
     -------
@@ -218,6 +347,7 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     ------
     ValueError
         If any required columns are missing from the plate metadata file.
+        If duplicate rows are found after concatenation.
 
     Notes
     -----
@@ -225,7 +355,13 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     - For ORF plates: Excludes plates in the redlist from get_orf_plate_redlist()
     - For source_3: Excludes batches in SOURCE3_BATCH_REDLIST unless plate type is TARGET2
     """
-    plate_metadata = pd.read_csv("./inputs/metadata/plate.csv.gz")
+    # Load and check for duplicates
+    plate_metadata = _load_and_concat_data(
+        "./inputs/metadata/plate.csv.gz",
+        search_additional_metadata=search_additional_metadata,
+        sources=sources,
+        metadata_type="plate",
+    )
 
     required_cols = [
         "Metadata_Source",
@@ -253,7 +389,11 @@ def get_plate_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFra
     return plate_metadata
 
 
-def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
+def get_well_metadata(
+    plate_types: list[str],
+    search_additional_metadata: bool = False,
+    sources: list[str] = None,
+) -> pd.DataFrame:
     """Load and process well-level metadata with optional ORF/CRISPR annotations.
 
     Loads well metadata from './inputs/metadata/well.csv.gz' and optionally merges with
@@ -265,6 +405,12 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
         List of plate types to process (e.g., ['ORF', 'CRISPR', 'TARGET2']).
         If 'ORF' is included, merges with ORF metadata from './inputs/metadata/orf.csv.gz'.
         If 'CRISPR' is included, merges with CRISPR metadata from './inputs/metadata/crispr.csv.gz'.
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata files in the profiles directory
+        structure based on the given sources.
+    sources : list[str], optional
+        List of source identifiers to search within if search_additional_metadata is True.
+        Must be provided if search_additional_metadata is True.
 
     Returns
     -------
@@ -278,13 +424,22 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
     ------
     ValueError
         If Metadata_JCP2022 column is missing from the well metadata file.
+        If duplicate rows are found after concatenation.
+        If search_additional_metadata is True but sources is not provided.
 
     Notes
     -----
     The function performs left joins when merging ORF/CRISPR metadata, meaning wells
     without matching ORF/CRISPR data will have NULL values in the merged columns.
     """
-    well_metadata = pd.read_csv("./inputs/metadata/well.csv.gz")
+    # Load and check for duplicates
+    well_metadata = _load_and_concat_data(
+        "./inputs/metadata/well.csv.gz",
+        search_additional_metadata=search_additional_metadata,
+        sources=sources,
+        metadata_type="well",
+    )
+
     validate_columns(well_metadata, ["Metadata_JCP2022"])
 
     if "ORF" in plate_types:
@@ -312,7 +467,11 @@ def get_well_metadata(plate_types: list[str]) -> pd.DataFrame:
 # ------------------------------
 
 
-def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
+def load_metadata(
+    sources: list[str],
+    plate_types: list[str],
+    search_additional_metadata: bool = False,
+) -> pd.DataFrame:
     """Load and merge plate and well metadata.
 
     Parameters
@@ -321,6 +480,9 @@ def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         List of source identifiers to include.
     plate_types : list[str]
         List of plate types to include.
+    search_additional_metadata : bool, optional
+        If True, automatically search for additional metadata files in the profiles directory
+        structure based on the given sources.
 
     Returns
     -------
@@ -328,7 +490,11 @@ def load_metadata(sources: list[str], plate_types: list[str]) -> pd.DataFrame:
         Merged metadata DataFrame containing both plate and well information,
         filtered according to the specified sources and plate types.
     """
-    plate = get_plate_metadata(sources, plate_types)
-    well = get_well_metadata(plate_types)
+    plate = get_plate_metadata(
+        sources,
+        plate_types,
+        search_additional_metadata,
+    )
+    well = get_well_metadata(plate_types, search_additional_metadata, sources)
     meta = well.merge(plate, on=["Metadata_Source", "Metadata_Plate"])
     return meta

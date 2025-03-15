@@ -14,6 +14,7 @@ same directory structure as inputs/.
 
 import os
 import pandas as pd
+import shutil
 
 
 def is_deep_learning_profile(filepath):
@@ -61,14 +62,18 @@ def main():
 
     # List of production parquet files to be processed
     source_files = [
-        "inputs/profiles/source_13/workspace/profiles/20220914_Run1/CP-CC9-R1-04/CP-CC9-R1-04.parquet",
-        "inputs/profiles/source_13/workspace/profiles/20221009_Run2/CP-CC9-R2-04/CP-CC9-R2-04.parquet",
-        "inputs/profiles/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
-        "inputs/profiles/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
-        "inputs/profiles/source_5/workspace/profiles/JUMPCPE-20210628-Run03_20210629_064133/APTJUM122/APTJUM122.parquet",
-        "inputs/profiles/source_5/workspace/profiles/JUMPCPE-20210903-Run27_20210904_215148/APTJUM422/APTJUM422.parquet",
-        "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
-        "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
+        # "inputs/profiles/source_13/workspace/profiles/20220914_Run1/CP-CC9-R1-04/CP-CC9-R1-04.parquet",
+        # "inputs/profiles/source_13/workspace/profiles/20221009_Run2/CP-CC9-R2-04/CP-CC9-R2-04.parquet",
+        # "inputs/profiles/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
+        # "inputs/profiles/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
+        # "inputs/profiles/source_5/workspace/profiles/JUMPCPE-20210628-Run03_20210629_064133/APTJUM122/APTJUM122.parquet",
+        # "inputs/profiles/source_5/workspace/profiles/JUMPCPE-20210903-Run27_20210904_215148/APTJUM422/APTJUM422.parquet",
+        # "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
+        # "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
+        "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121328/BR00121328.parquet",
+        "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121332/BR00121332.parquet",
+        "inputs/profiles/source_molglue/workspace/metadata/plate.parquet",
+        "inputs/profiles/source_molglue/workspace/metadata/well.parquet",
     ]
 
     # Convert source paths to absolute paths
@@ -80,11 +85,6 @@ def main():
             continue
 
         print(f"Processing {src}")
-        # Read the production parquet file
-        df = pd.read_parquet(src)
-
-        # Filter the dataframe columns
-        filtered_df = filter_columns(df, src)
 
         # Create the same relative path structure in the fixtures directory
         rel_path = os.path.relpath(src, os.path.join(repo_root, "inputs"))
@@ -93,9 +93,22 @@ def main():
         # Create the destination directory if it doesn't exist
         os.makedirs(os.path.dirname(dest_file), exist_ok=True)
 
-        # Write the filtered DataFrame to a new parquet file
-        filtered_df.to_parquet(dest_file)
-        print(f"Written filtered file to {dest_file}")
+        if "workspace/profiles" in src:
+            # Read the production parquet file
+            df = pd.read_parquet(src)
+
+            # Filter the dataframe columns
+            filtered_df = filter_columns(df, src)
+
+            # Write the filtered DataFrame to a new parquet file
+            filtered_df.to_parquet(dest_file)
+            print(f"Written filtered file to {dest_file}")
+        elif "workspace/metadata" in src:
+            # Copy the metadata file
+            shutil.copy(src, dest_file)
+            print(f"Copied metadata file to {dest_file}")
+        else:
+            print(f"Skipping {src} as it is not a profile or metadata file")
 
 
 if __name__ == "__main__":
