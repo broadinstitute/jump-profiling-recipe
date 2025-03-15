@@ -389,6 +389,113 @@ def process_files(
     if failures > 0:
         logger.warning(f"Completed with {failures} file(s) failed to process")
 
+    # Collate all plate and well metadata files into single files
+    if (
+        total_files > failures
+    ):  # Only collate if at least one file was processed successfully
+        collate_metadata_files(output_dir)
+
+
+def collate_metadata_files(output_dir: Path) -> None:
+    """
+    Collate all plate and well metadata files into single files.
+
+    Args:
+        output_dir: Base output directory containing metadata files
+    """
+    metadata_dir = output_dir / "metadata"
+
+    # Ensure the base metadata directory exists
+    if not metadata_dir.exists():
+        logger.warning(
+            f"No metadata directory found at {metadata_dir}, skipping collation"
+        )
+        return
+
+    # Collate plate metadata files
+    _collate_metadata_type(
+        metadata_dir, "plate", ["Metadata_Source", "Metadata_Batch", "Metadata_Plate"]
+    )
+
+    # Collate well metadata files
+    _collate_metadata_type(
+        metadata_dir, "well", ["Metadata_Source", "Metadata_Plate", "Metadata_Well"]
+    )
+
+
+def _collate_metadata_type(
+    metadata_dir: Path, metadata_type: str, dedup_columns: List[str]
+) -> None:
+    """
+    Helper function to collate a specific type of metadata files.
+
+    Args:
+        metadata_dir: Base metadata directory
+        metadata_type: Type of metadata files to collate ('plate' or 'well')
+        dedup_columns: Columns to check for duplicates
+    """
+    # Find all metadata files of the specified type
+    metadata_files = list(metadata_dir.glob(f"**/{metadata_type}.parquet"))
+
+    if not metadata_files:
+        logger.warning(f"No {metadata_type} metadata files found to collate")
+        return
+
+    logger.info(f"Collating {len(metadata_files)} {metadata_type} metadata files")
+
+    # Load and concatenate all metadata files
+    dfs = []
+    for file_path in metadata_files:
+        try:
+            df = pd.read_parquet(file_path)
+            dfs.append(df)
+        except Exception as e:
+            logger.error(
+                f"Error reading {metadata_type} metadata file {file_path}: {str(e)}"
+            )
+
+    if not dfs:
+        logger.warning(f"Failed to read any {metadata_type} metadata files")
+        return
+
+    # Concatenate all dataframes
+    collated_df = pd.concat(dfs, ignore_index=True)
+
+    # Check for duplicates based on specified columns
+    duplicates = collated_df.duplicated(subset=dedup_columns, keep=False)
+    if duplicates.any():
+        duplicate_rows = collated_df[duplicates].sort_values(by=dedup_columns)
+        num_duplicates = len(duplicate_rows) - len(
+            duplicate_rows.drop_duplicates(subset=dedup_columns)
+        )
+
+        logger.error(
+            f"Found {num_duplicates} duplicate entries in {metadata_type} metadata"
+        )
+        logger.error(f"First few duplicates in {metadata_type} metadata:")
+        for i, (_, row) in enumerate(duplicate_rows.iterrows()):
+            if i < 5:  # Only show the first 5 duplicates to avoid log spam
+                logger.error(f"  {dict(row[dedup_columns])}")
+            else:
+                break
+
+        logger.error(
+            f"Saving full duplicates to {metadata_dir}/{metadata_type}_duplicates.csv for inspection"
+        )
+        duplicate_rows.to_csv(
+            metadata_dir / f"{metadata_type}_duplicates.csv", index=False
+        )
+
+        # Continue with collation but log a warning
+        logger.warning(f"Collated {metadata_type} metadata will contain duplicates")
+    else:
+        logger.info(f"No duplicates found in {metadata_type} metadata")
+
+    # Save the collated file (with duplicates intact)
+    collated_path = metadata_dir / f"{metadata_type}.parquet"
+    collated_df.to_parquet(collated_path)
+    logger.info(f"Saved collated {metadata_type} metadata to {collated_path}")
+
 
 @click.command("convert")
 @click.argument(
