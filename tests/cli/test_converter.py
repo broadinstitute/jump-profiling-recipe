@@ -3,6 +3,7 @@
 import sys
 import tempfile
 from pathlib import Path
+import logging
 
 import pandas as pd
 import pytest
@@ -168,7 +169,7 @@ def test_convert_command(
     well_metadata_df = pd.read_parquet(expected_well_metadata_path)
 
     # Load mandatory features
-    mandatory_features = read_mandatory_feature_cols(mandatory_feature_cols_file)
+    mandatory_feature_cols = read_mandatory_feature_cols(mandatory_feature_cols_file)
 
     # Verify profile file has the expected structure
     # 1. Should have Metadata_Source column with value "source_4"
@@ -185,7 +186,7 @@ def test_convert_command(
     feature_columns = [
         col for col in converted_df.columns if not col.startswith("Metadata_")
     ]
-    assert set(feature_columns).issubset(mandatory_features)
+    assert set(feature_columns).issubset(mandatory_feature_cols)
 
     # 4. All features in the output should match the original values
     for feature in feature_columns:
@@ -195,10 +196,10 @@ def test_convert_command(
         )
 
     # 5. Verify we have all available mandatory features
-    available_mandatory_features = [
-        f for f in mandatory_features if f in original_df.columns
+    available_mandatory_feature_cols = [
+        f for f in mandatory_feature_cols if f in original_df.columns
     ]
-    assert set(feature_columns) == set(available_mandatory_features)
+    assert set(feature_columns) == set(available_mandatory_feature_cols)
 
     # Verify plate metadata file has the expected structure
     # 1. Should have exactly one row
@@ -424,3 +425,236 @@ def test_continue_on_error(input_file_path, temp_output_dir, tmp_path):
 
     assert expected_plate_path.exists(), "Plate metadata file was not created"
     assert expected_well_path.exists(), "Well metadata file was not created"
+
+
+@pytest.fixture
+def multiple_input_files(tmp_path):
+    """Create multiple mock CSV files in different directories to test collation."""
+    # Setup directory structure
+    batch_dir1 = tmp_path / "2021_04_26_Batch1"
+    batch_dir2 = tmp_path / "2021_04_27_Batch2"
+
+    plate_dirs = [
+        batch_dir1 / "PLATE001",
+        batch_dir1 / "PLATE002",
+        batch_dir2 / "PLATE003",
+    ]
+
+    # Create directories
+    for plate_dir in plate_dirs:
+        plate_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create CSV files with test data
+    files = []
+    for i, plate_dir in enumerate(plate_dirs):
+        plate_id = f"PLATE00{i + 1}"
+        file_path = plate_dir / f"{plate_id}.csv"
+
+        # Create test data with different wells for each plate
+        wells = [f"{row}{col}" for row in "ABC" for col in range(1, 3)]
+        df = pd.DataFrame(
+            {
+                "Metadata_Plate": [plate_id] * len(wells),
+                "Metadata_Well": wells,
+                "Feature1": [float(i) for i in range(len(wells))],
+            }
+        )
+
+        df.to_csv(file_path, index=False)
+        files.append(file_path)
+
+    # Create file list
+    file_list_path = tmp_path / "multi_file_list.txt"
+    with open(file_list_path, "w") as f:
+        for file_path in files:
+            f.write(f"{file_path}\n")
+
+    return file_list_path
+
+
+def test_metadata_collation(multiple_input_files, temp_output_dir):
+    """Test the collation of metadata files after processing multiple files."""
+    # Run the convert command with multiple input files
+    runner = CliRunner()
+    result = runner.invoke(
+        convert_command,
+        [
+            str(multiple_input_files),
+            "--output-dir",
+            str(temp_output_dir),
+            "--source",
+            "test_source",
+            "--verbose",
+        ],
+    )
+
+    # Check that the command ran successfully
+    assert result.exit_code == 0, f"Command failed with error: {result.output}"
+
+    # Verify that collated metadata files were created
+    collated_plate_path = temp_output_dir / "metadata" / "plate.parquet"
+    collated_well_path = temp_output_dir / "metadata" / "well.parquet"
+
+    assert collated_plate_path.exists(), "Collated plate metadata file not created"
+    assert collated_well_path.exists(), "Collated well metadata file not created"
+
+    # Verify collated plate metadata
+    plate_df = pd.read_parquet(collated_plate_path)
+
+    # Should have 3 unique plates
+    assert len(plate_df) == 3, f"Expected 3 plates, got {len(plate_df)}"
+
+    # Check if plates from both batches are present
+    assert "2021_04_26_Batch1" in plate_df["Metadata_Batch"].values
+    assert "2021_04_27_Batch2" in plate_df["Metadata_Batch"].values
+
+    # Verify all expected plates exist
+    expected_plates = {"PLATE001", "PLATE002", "PLATE003"}
+    assert set(plate_df["Metadata_Plate"]) == expected_plates
+
+    # Verify collated well metadata
+    well_df = pd.read_parquet(collated_well_path)
+
+    # Should have 18 unique wells (3 plates × 6 wells)
+    assert len(well_df) == 18, f"Expected 18 wells, got {len(well_df)}"
+
+    # Check if wells from all plates are present
+    for plate in expected_plates:
+        assert plate in well_df["Metadata_Plate"].values
+
+    # Check that there are no duplicate combinations of plate+well
+    well_combinations = well_df[["Metadata_Plate", "Metadata_Well"]].drop_duplicates()
+    assert len(well_combinations) == len(well_df), "Well metadata contains duplicates"
+
+
+@pytest.fixture
+def multiple_input_files_with_duplicates(tmp_path):
+    """Create input files with duplicate metadata to test duplicate detection."""
+    # Create different batch directories to avoid overwriting metadata files
+    batch_dir1 = tmp_path / "2021_04_26_Batch1"
+    batch_dir2 = tmp_path / "2021_04_26_Batch2"  # Using a different batch directory
+
+    plate_dir1 = batch_dir1 / "PLATE001"
+    plate_dir2 = batch_dir2 / "PLATE001"  # Same plate name but different batch
+    plate_dir3 = batch_dir1 / "PLATE002"
+
+    for dir_path in [plate_dir1, plate_dir2, plate_dir3]:
+        dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Create first CSV with data for PLATE001 in Batch1
+    file1_path = plate_dir1 / "PLATE001_file1.csv"
+    df1 = pd.DataFrame(
+        {
+            "Metadata_Plate": ["PLATE001"] * 4,
+            "Metadata_Well": ["A01", "A02", "A03", "A04"],
+            "Feature1": [1.0, 2.0, 3.0, 4.0],
+        }
+    )
+    df1.to_csv(file1_path, index=False)
+
+    # Create a second file with the SAME plate in Batch2
+    # This creates duplicate wells when collated
+    file2_path = plate_dir2 / "PLATE001_file2.csv"
+    df2 = pd.DataFrame(
+        {
+            "Metadata_Plate": ["PLATE001"] * 3,
+            "Metadata_Well": ["A03", "A04", "A05"],  # A03 and A04 will be duplicates
+            "Feature1": [30.0, 40.0, 5.0],
+        }
+    )
+    df2.to_csv(file2_path, index=False)
+
+    # Create file for PLATE002 (no duplicates here)
+    file3_path = plate_dir3 / "PLATE002.csv"
+    df3 = pd.DataFrame(
+        {
+            "Metadata_Plate": ["PLATE002"] * 3,
+            "Metadata_Well": ["B01", "B02", "B03"],
+            "Feature1": [6.0, 7.0, 8.0],
+        }
+    )
+    df3.to_csv(file3_path, index=False)
+
+    # Create file list
+    file_list_path = tmp_path / "duplicate_file_list.txt"
+    with open(file_list_path, "w") as f:
+        f.write(f"{file1_path}\n")
+        f.write(f"{file2_path}\n")
+        f.write(f"{file3_path}\n")
+
+    return file_list_path
+
+
+def test_metadata_collation_with_duplicates(
+    multiple_input_files_with_duplicates, temp_output_dir, caplog
+):
+    """Test the detection and reporting of duplicates during metadata collation."""
+    # Set the log level to capture error messages
+    caplog.set_level(logging.ERROR)
+
+    # Run the convert command with files containing duplicate metadata
+    runner = CliRunner()
+    result = runner.invoke(
+        convert_command,
+        [
+            str(multiple_input_files_with_duplicates),
+            "--output-dir",
+            str(temp_output_dir),
+            "--source",
+            "test_source",
+            "--verbose",
+            "--continue-on-error",  # Add this to ensure all files are processed
+        ],
+    )
+
+    # Command should still succeed but with warnings
+    assert result.exit_code == 0, f"Command failed with error: {result.output}"
+
+    # Check if collated metadata files were created
+    collated_plate_path = temp_output_dir / "metadata" / "plate.parquet"
+    collated_well_path = temp_output_dir / "metadata" / "well.parquet"
+
+    assert collated_plate_path.exists(), "Collated plate metadata file not created"
+    assert collated_well_path.exists(), "Collated well metadata file not created"
+
+    # Verify that the duplicate detection triggered warnings in the logs
+    duplicate_log_messages = [
+        record.message
+        for record in caplog.records
+        if "duplicate entries in well metadata" in record.message.lower()
+        or "found duplicate" in record.message.lower()
+    ]
+    assert duplicate_log_messages, "No duplicate warnings found in logs"
+
+    # Check that the duplicates CSV file was created
+    duplicates_csv_path = temp_output_dir / "metadata" / "well_duplicates.csv"
+    assert duplicates_csv_path.exists(), "Duplicates CSV file was not created"
+
+    # Verify the duplicates CSV contains the expected entries
+    duplicates_df = pd.read_csv(duplicates_csv_path)
+
+    # Should have at least 4 rows (2 duplicated wells × 2 occurrences each)
+    assert len(duplicates_df) >= 4, "Duplicates file doesn't have enough entries"
+
+    # Check if the known duplicate wells are in the file
+    duplicate_wells = duplicates_df[duplicates_df["Metadata_Plate"] == "PLATE001"][
+        "Metadata_Well"
+    ]
+    assert "A03" in duplicate_wells.values, "Known duplicate A03 not found"
+    assert "A04" in duplicate_wells.values, "Known duplicate A04 not found"
+
+    # Verify the collated well metadata still exists and contains the duplicates
+    well_df = pd.read_parquet(collated_well_path)
+
+    # Get the full set of wells for PLATE001
+    plate001_wells = well_df[well_df["Metadata_Plate"] == "PLATE001"][
+        "Metadata_Well"
+    ].tolist()
+
+    # Count occurrences of A03 and A04 (our known duplicates)
+    a03_count = plate001_wells.count("A03")
+    a04_count = plate001_wells.count("A04")
+
+    # We should have 2 of each
+    assert a03_count == 2, f"Expected 2 occurrences of A03, got {a03_count}"
+    assert a04_count == 2, f"Expected 2 occurrences of A04, got {a04_count}"
