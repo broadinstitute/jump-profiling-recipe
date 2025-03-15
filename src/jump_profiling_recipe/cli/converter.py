@@ -52,10 +52,11 @@ def get_output_path(
         # If path is not deep enough, just use available parts
         parts = input_file.parts
 
-    # For profiles, use input filename
+    # For profiles, use the name of the directory one level up from the file
     if file_type == "profiles":
-        # Construct new path: output_dir/profiles/dir1/dir2/filename.parquet
-        relative_path = Path(*parts[:-1]) / input_file.stem
+        # Construct new path: output_dir/profiles/dir1/dir2/dir2.parquet
+        # (using directory name instead of filename)
+        relative_path = Path(*parts[:-1]) / parts[-2]
         return output_dir / file_type / relative_path.with_suffix(".parquet")
     # For metadata files, use plate.parquet or well.parquet
     elif file_type == "metadata" and metadata_level in ["plate", "well"]:
