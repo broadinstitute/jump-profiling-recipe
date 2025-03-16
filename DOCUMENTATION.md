@@ -207,6 +207,99 @@ snakemake -c1 outputs/compound/profiles_var_mad_int_featselect_harmony.parquet -
 2. Include the rule file in the main Snakefile if needed
 3. Update your pipeline configuration to incorporate the new step
 
+### Converting Non-JUMP Data
+
+The JUMP Profiling Recipe includes a data converter tool that allows you to transform non-JUMP Cell Painting data into a JUMP-compatible format. This enables you to analyze your own datasets alongside JUMP data or process them using the same workflow.
+
+#### Input Requirements
+
+Your input data should be in CSV, CSV.GZ, or Parquet format with at minimum these columns:
+- `Metadata_Plate`: Plate identifier
+- `Metadata_Well`: Well position (e.g., A01, B02)
+- Feature columns: Morphological features from Cell Painting
+
+#### Using the Converter
+
+The converter is available as a CLI tool:
+
+```bash
+python -m jump_profiling_recipe.cli.converter convert \
+  <file_list> \
+  --output-dir <output_directory> \
+  --source <source_identifier> \
+  --jcp2022-cols <id_columns>
+```
+
+Required parameters:
+- `file_list`: Path to a text file containing a list of input files (one per line)
+- `--output-dir`: Directory where processed files will be saved
+- `--source`: Value to set in the `Metadata_Source` column (your data source identifier)
+- `--jcp2022-cols`: Comma-separated list of columns that identify your perturbations (will be combined to create `Metadata_JCP2022`)
+
+Optional parameters:
+- `--mandatory-feature-cols-file`: Path to a file listing feature columns to keep (use `inputs/metadata/cpg0016_mandatory_feature_columns.txt` or `inputs/metadata/cpg0016_mandatory_feature_columns_without_image_columns.txt` to align with JUMP data)
+- `--mandatory-metadata`: Comma-separated list of required metadata columns (default: `"Metadata_Plate,Metadata_Well"`)
+- `--default-plate-type`: Value for `Metadata_PlateType` when not in source data (default: `"UNKNOWN"`)
+- `--continue-on-error`: Continue processing remaining files if an error occurs
+- `--verbose`: Enable verbose logging
+
+#### Example
+
+1. Create a file list containing your input files:
+```bash
+echo "/path/to/data/plate1.csv" > my_file_list.txt
+echo "/path/to/data/plate2.csv" >> my_file_list.txt
+```
+
+2. Convert your data:
+```bash
+python -m jump_profiling_recipe.cli.converter convert \
+  my_file_list.txt \
+  --output-dir my_converted_data \
+  --mandatory-feature-cols-file inputs/metadata/cpg0016_mandatory_feature_columns_without_image_columns.txt \
+  --source LAB01 \
+  --default-plate-type COMPOUND \
+  --jcp2022-cols Compound_ID,Concentration
+```
+
+This will create a JUMP-compatible directory structure:
+
+```
+my_converted_data/
+├── metadata/
+│ ├── plate.parquet # Collated plate metadata
+│ ├── well.parquet # Collated well metadata
+│ └── <batch>/<plate>/ # Individual plate/well metadata
+└── profiles/
+└── <batch>/<plate>/ # Profile data files
+```
+
+3. Configure your workflow:
+Add your data source to the `sources` list in your configuration file:
+```json
+{
+  "sources": [
+    "source_1",
+    "source_2",
+    "LAB01"  // Your source identifier
+  ]
+}
+```
+
+#### Multiple Perturbation IDs
+
+If your perturbation identifiers are split across multiple columns (e.g., compound ID and concentration), you can combine them:
+
+```bash
+python -m jump_profiling_recipe.cli.converter convert \
+  my_file_list.txt \
+  --output-dir my_converted_data \
+  --source LAB01 \
+  --jcp2022-cols Compound_ID,Concentration
+```
+
+This will combine values with a colon separator (e.g., "COMPOUND123:10uM") in the `Metadata_JCP2022` column.
+
 ### Troubleshooting
 
 For detailed logs during execution:
