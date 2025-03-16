@@ -1,5 +1,8 @@
 # JUMP Profiling Recipe Documentation
 
+[![hackmd-github-sync-badge](https://hackmd.io/dtMnySWkQNKTuC2owVglzQ/badge)](https://hackmd.io/dtMnySWkQNKTuC2owVglzQ)
+
+
 ## Overview
 
 The JUMP Profiling Recipe provides a Snakemake workflow designed for preprocessing and analyzing JUMP dataset profiles.
