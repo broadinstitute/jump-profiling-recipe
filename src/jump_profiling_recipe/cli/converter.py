@@ -170,9 +170,9 @@ def process_file(
     input_file: Path,
     output_dir: Path,
     source: str,
+    jcp2022_cols: str,
     mandatory_feature_cols: Optional[Set[str]] = None,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
-    jcp2022_cols: Optional[str] = None,
     default_plate_type: str = "UNKNOWN",
 ) -> None:
     """
@@ -182,9 +182,9 @@ def process_file(
         input_file: Path to input file
         output_dir: Directory to save output
         source: Value to set in Metadata_Source column
+        jcp2022_cols: Comma-separated list of columns to be treated as Metadata_JCP2022
         mandatory_feature_cols: Optional set of feature column names that must be included
         mandatory_metadata_cols: List of required metadata columns (default: ["Metadata_Plate", "Metadata_Well"])
-        jcp2022_cols: Optional comma-separated list of columns to be treated as Metadata_JCP2022
         default_plate_type: Default value for Metadata_PlateType when not present in data
     """
     logger.info(f"Processing file: {input_file}")
@@ -264,31 +264,64 @@ def process_file(
         "Metadata_Well": metadata_df["Metadata_Well"],
     }
 
-    # Add JCP2022 column if specified, using the columns from jcp2022_cols
-    if jcp2022_cols and jcp2022_cols.strip():
-        # Split the comma-separated list
-        cols_list = [col.strip() for col in jcp2022_cols.split(",") if col.strip()]
+    # Add JCP2022 column using the columns from jcp2022_cols
+    # Split the comma-separated list
+    cols_list = [col.strip() for col in jcp2022_cols.split(",") if col.strip()]
 
-        # Check if all specified columns exist
-        missing_cols = [col for col in cols_list if col not in df.columns]
-        if missing_cols:
-            logger.warning(f"JCP2022 columns not found in {input_file}: {missing_cols}")
-            well_metadata["Metadata_JCP2022"] = [""] * len(df)
-        else:
-            # For a single column, just use its values
-            if len(cols_list) == 1:
-                well_metadata["Metadata_JCP2022"] = df[cols_list[0]]
-            # For multiple columns, concatenate values with ":" as delimiter
-            else:
-                well_metadata["Metadata_JCP2022"] = (
-                    df[cols_list].astype(str).apply(lambda row: ":".join(row), axis=1)
-                )
+    if not cols_list:
+        # Handle empty string or all-whitespace input
+        raise click.ClickException(
+            f"Empty JCP2022 columns value for {input_file}. "
+            f"Please specify valid column names using the --jcp2022-cols option."
+        )
+
+    # Check if all specified columns exist
+    missing_cols = [col for col in cols_list if col not in df.columns]
+    if missing_cols:
+        raise click.ClickException(
+            f"JCP2022 columns not found in {input_file}: {missing_cols}. "
+            f"All JCP2022 columns must exist in the input file."
+        )
+
+    # For a single column, just use its values
+    if len(cols_list) == 1:
+        well_metadata["Metadata_JCP2022"] = df[cols_list[0]]
+    # For multiple columns, concatenate values with ":" as delimiter
     else:
-        # If jcp2022_cols is not specified, create an empty column
-        well_metadata["Metadata_JCP2022"] = [""] * len(df)
+        well_metadata["Metadata_JCP2022"] = (
+            df[cols_list].astype(str).apply(lambda row: ":".join(row), axis=1)
+        )
 
-    # Create well metadata DataFrame and remove duplicates
-    well_df = pd.DataFrame(well_metadata).drop_duplicates()
+    # Create well metadata DataFrame
+    well_df = pd.DataFrame(well_metadata)
+
+    # Check for empty Metadata_JCP2022 values (NULL/NA/NaN values or empty strings)
+    empty_jcp2022 = pd.isna(well_df["Metadata_JCP2022"]) | (
+        well_df["Metadata_JCP2022"].astype(str).str.strip() == ""
+    )
+
+    if empty_jcp2022.any():
+        empty_count = empty_jcp2022.sum()
+
+        # Show some examples of the empty values (up to 5)
+        empty_examples = well_df[empty_jcp2022].head(5)
+        example_str = "\n".join(
+            f"  Plate: {row['Metadata_Plate']}, Well: {row['Metadata_Well']}, "
+            f"JCP2022 Value: '{row['Metadata_JCP2022']}'"
+            for _, row in empty_examples.iterrows()
+        )
+
+        warning_msg = (
+            f"Found {empty_count} wells with empty Metadata_JCP2022 values in {input_file}.\n"
+            f"Examples of wells with empty values:\n{example_str}\n"
+            f"These will be replaced with 'UNSPECIFIED'"
+        )
+        logger.warning(warning_msg)
+
+        # Replace empty values with UNSPECIFIED
+        # We intentionally do not replace with JCP2022_UNKNOWN because the current implementation
+        # of get_well_metadata filters out JCP2022_UNKNOWN wells.
+        well_df.loc[empty_jcp2022, "Metadata_JCP2022"] = "UNSPECIFIED"
 
     # Save well metadata
     well_df.to_parquet(output_well_metadata_file)
@@ -346,10 +379,10 @@ def process_files(
     input_files: List[Path],
     output_dir: Path,
     source: str,
+    jcp2022_cols: str,
     mandatory_feature_cols: Optional[Set[str]] = None,
     continue_on_error: bool = False,
     mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
-    jcp2022_cols: Optional[str] = None,
     default_plate_type: str = "UNKNOWN",
 ) -> None:
     """Process multiple input files.
@@ -358,10 +391,10 @@ def process_files(
         input_files: List of input file paths
         output_dir: Directory to save output files
         source: Value to set in Metadata_Source column
+        jcp2022_cols: Comma-separated list of columns to be treated as Metadata_JCP2022
         mandatory_feature_cols: Optional set of feature column names that must be included
         continue_on_error: If True, continue processing other files when one fails
         mandatory_metadata_cols: List of required metadata columns to preserve
-        jcp2022_cols: Optional comma-separated list of columns to be treated as Metadata_JCP2022
         default_plate_type: Default value for Metadata_PlateType when not present
     """
     failures = 0
@@ -377,13 +410,13 @@ def process_files(
         try:
             file_start_time = time.time()
             process_file(
-                input_file,
-                output_dir,
-                source,
-                mandatory_feature_cols,
-                mandatory_metadata_cols,
-                jcp2022_cols,
-                default_plate_type,
+                input_file=input_file,
+                output_dir=output_dir,
+                source=source,
+                jcp2022_cols=jcp2022_cols,
+                mandatory_feature_cols=mandatory_feature_cols,
+                mandatory_metadata_cols=mandatory_metadata_cols,
+                default_plate_type=default_plate_type,
             )
             file_elapsed = time.time() - file_start_time
             logger.debug(f"Processed {input_file} in {file_elapsed:.2f} seconds")
@@ -551,8 +584,8 @@ def _collate_metadata_type(
 @click.option(
     "--jcp2022-cols",
     type=str,
-    default=None,
-    help="Comma-separated list of columns to be treated as Metadata_JCP2022. If multiple, values will be concatenated with ':' as delimiter.",
+    required=True,
+    help="Comma-separated list of columns to be treated as Metadata_JCP2022. If multiple, values will be concatenated with ':' as delimiter. This option is required.",
 )
 @click.option(
     "--default-plate-type",
@@ -567,8 +600,8 @@ def convert_command(
     verbose: bool,
     mandatory_feature_cols_file: Optional[Path],
     continue_on_error: bool,
+    jcp2022_cols: str,
     mandatory_metadata: str = "Metadata_Plate,Metadata_Well",
-    jcp2022_cols: Optional[str] = None,
     default_plate_type: str = "UNKNOWN",
 ):
     """Convert CSV/Parquet files to processed Parquet files.
@@ -586,6 +619,9 @@ def convert_command(
     If a mandatory features file is provided, only those features will be kept in the
     output, and warnings will be logged for any missing features. The features file
     should contain one feature name per line.
+
+    JCP2022 columns are used to build the Metadata_JCP2022 value in the well metadata.
+    This is a required parameter and must specify valid columns in the input files.
 
     Arguments:
         file_list: Text file containing list of input files (one per line)
@@ -629,14 +665,14 @@ def convert_command(
 
     # Process files
     process_files(
-        input_files,
-        output_dir,
-        source,
-        mandatory_feature_cols,
-        continue_on_error,
-        mandatory_metadata_cols,
-        jcp2022_cols,
-        default_plate_type,
+        input_files=input_files,
+        output_dir=output_dir,
+        source=source,
+        jcp2022_cols=jcp2022_cols,
+        mandatory_feature_cols=mandatory_feature_cols,
+        continue_on_error=continue_on_error,
+        mandatory_metadata_cols=mandatory_metadata_cols,
+        default_plate_type=default_plate_type,
     )
 
 

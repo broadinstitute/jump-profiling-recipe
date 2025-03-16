@@ -5,7 +5,7 @@ Functions for computing metrics
 import copairs.map as copairs
 import pandas as pd
 import numpy as np
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from .io import split_parquet
 from .metadata import NEGCON_CODES
@@ -87,8 +87,36 @@ def _group_negcons(meta: pd.DataFrame) -> None:
     meta["Metadata_JCP2022"] = pert_id
 
 
+# Define default parameters at the module level to avoid duplicating them
+DEFAULT_AP_NEGCON_PARAMS = {
+    "pos_sameby": ["Metadata_JCP2022"],
+    "pos_diffby": [],
+    "neg_sameby": ["Metadata_Plate"],
+    "neg_diffby": ["Metadata_pert_type", "Metadata_JCP2022"],
+    "batch_size": 20000,
+}
+
+DEFAULT_AP_NONREP_PARAMS = {
+    "pos_sameby": ["Metadata_JCP2022"],
+    "pos_diffby": [],
+    "neg_sameby": ["Metadata_Plate"],
+    "neg_diffby": ["Metadata_JCP2022"],
+    "batch_size": 20000,
+}
+
+DEFAULT_MAP_PARAMS = {
+    "threshold": 0.05,
+    "sameby": "Metadata_JCP2022",
+    "null_size": 10000,
+    "seed": 0,
+}
+
+
 def average_precision_negcon(
-    parquet_path: str, ap_path: str, plate_types: List[str]
+    parquet_path: str,
+    ap_path: str,
+    plate_types: List[str],
+    ap_params: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Calculate average precision with respect to negative controls.
 
@@ -101,6 +129,10 @@ def average_precision_negcon(
         Path where the average precision results will be saved.
     plate_types : List[str]
         List of plate types to include in the analysis.
+    ap_params : Optional[Dict[str, Any]], optional
+        Parameters for average precision calculation, by default None.
+        If provided, these parameters will be used entirely.
+        If None, default parameters will be used.
     """
     meta, vals, _ = split_parquet(parquet_path)
     required_cols = [
@@ -114,22 +146,24 @@ def average_precision_negcon(
     meta = meta[ix].copy()
     vals = vals[ix]
     _group_negcons(meta)
+
+    # Use either the user-provided parameters or default parameters (all-or-nothing)
+    params = DEFAULT_AP_NEGCON_PARAMS if ap_params is None else ap_params
+
     result = copairs.average_precision(
         meta,
         vals,
-        pos_sameby=["Metadata_JCP2022"],
-        # pos_diffby=['Metadata_Well'],
-        pos_diffby=[],
-        neg_sameby=["Metadata_Plate"],
-        neg_diffby=["Metadata_pert_type", "Metadata_JCP2022"],
-        batch_size=20000,
+        **params,
     )
     result = result.query('Metadata_pert_type!="negcon"')
     result.reset_index(drop=True).to_parquet(ap_path)
 
 
 def average_precision_nonrep(
-    parquet_path: str, ap_path: str, plate_types: List[str]
+    parquet_path: str,
+    ap_path: str,
+    plate_types: List[str],
+    ap_params: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Calculate average precision with respect to non-replicate perturbations.
 
@@ -142,6 +176,10 @@ def average_precision_nonrep(
         Path where the average precision results will be saved.
     plate_types : List[str]
         List of plate types to include in the analysis.
+    ap_params : Optional[Dict[str, Any]], optional
+        Parameters for average precision calculation, by default None.
+        If provided, these parameters will be used entirely.
+        If None, default parameters will be used.
     """
     meta, vals, _ = split_parquet(parquet_path)
     required_cols = [
@@ -154,20 +192,22 @@ def average_precision_nonrep(
     ix = _index(meta, plate_types, ignore_codes=NEGCON_CODES)
     meta = meta[ix].copy()
     vals = vals[ix]
+
+    # Use either the user-provided parameters or default parameters (all-or-nothing)
+    params = DEFAULT_AP_NONREP_PARAMS if ap_params is None else ap_params
+
     result = copairs.average_precision(
         meta,
         vals,
-        pos_sameby=["Metadata_JCP2022"],
-        pos_diffby=[],
-        neg_sameby=["Metadata_Plate"],
-        neg_diffby=["Metadata_JCP2022"],
-        batch_size=20000,
+        **params,
     )
     result.reset_index(drop=True).to_parquet(ap_path)
 
 
 def mean_average_precision(
-    ap_path: str, map_path: str, threshold: float = 0.05
+    ap_path: str,
+    map_path: str,
+    map_params: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Calculate mean average precision from average precision scores.
 
@@ -178,14 +218,18 @@ def mean_average_precision(
         Must include column: Metadata_JCP2022
     map_path : str
         Path where the mean average precision results will be saved.
-    threshold : float, optional
-        Threshold for significance testing, by default 0.05.
+    map_params : Optional[Dict[str, Any]], optional
+        Parameters for mean average precision calculation, by default None.
+        If provided, these parameters will be used entirely.
+        If None, default parameters will be used.
     """
     ap_scores = pd.read_parquet(ap_path)
     required_cols = ["Metadata_JCP2022"]
     validate_columns(ap_scores, required_cols)
 
-    map_scores = copairs.mean_average_precision(
-        ap_scores, "Metadata_JCP2022", threshold=threshold, null_size=10000, seed=0
-    )
+    # Use either the user-provided parameters or default parameters (all-or-nothing)
+    params = DEFAULT_MAP_PARAMS if map_params is None else map_params
+
+    # Pass only ap_scores and params, since 'sameby' is already in params
+    map_scores = copairs.mean_average_precision(ap_scores, **params)
     map_scores.to_parquet(map_path)

@@ -1,0 +1,23 @@
+{
+    "scenario": "jump_addons",
+    "pipeline": "profiles_var",
+    "keep_image_features": false,
+    "use_mad_negcon": false,
+    "sources": [
+        "source_2021_03_11_MolecularGlue_AmitChoudharyLab_Broad",
+        "source_2021_04_07_ProteinKinaseInhibitors_NathanaelGray",
+        "source_2021_07_23_PPARG_agonist_Target_ID",
+        "source_2021_UMiami_PRISM_combined",
+        "source_2022_11_28_GrekaAlimova_MOA",
+        "source_2022_11_28_Wagner_MOA",
+        "source_2024_05_02_Schade_BMP_CPStd"
+    ],
+    "plate_types": [
+        "COMPOUND",
+        "TARGET2"
+    ],
+    "search_additional_metadata": true,
+    "batch_key": "Metadata_Batch",
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 2
+}
