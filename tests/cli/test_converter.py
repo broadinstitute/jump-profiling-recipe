@@ -156,6 +156,8 @@ def test_convert_command(
             str(temp_output_dir),
             "--source",
             "source_4",
+            "--jcp2022-cols",
+            "Metadata_Well",  # Because there's not a JCP2022 column in the fixture file
             "--mandatory-feature-cols-file",
             str(mandatory_feature_cols_file),
             "--verbose",
@@ -405,6 +407,12 @@ def test_multiple_plates_error(tmp_path, temp_output_dir):
         {
             "Metadata_Plate": ["PLATE001", "PLATE001", "PLATE002", "PLATE002"],
             "Metadata_Well": ["A01", "A02", "A01", "A02"],
+            "Metadata_JCP2022": [
+                "JCP2022_001122",
+                "JCP2022_002233",
+                "JCP2022_003344",
+                "JCP2022_004455",
+            ],
             "Feature1": [1.0, 2.0, 3.0, 4.0],
         }
     )
@@ -426,6 +434,8 @@ def test_multiple_plates_error(tmp_path, temp_output_dir):
             str(temp_output_dir),
             "--source",
             "test_source",
+            "--jcp2022-cols",
+            "Metadata_JCP2022",
         ],
     )
 
@@ -456,6 +466,8 @@ def test_continue_on_error(input_file_path, temp_output_dir, tmp_path):
             str(temp_output_dir),
             "--source",
             "source_4",
+            "--jcp2022-cols",
+            "Metadata_Well",  # Because there's not a JCP2022 column in the fixture file
             "--continue-on-error",
             "--verbose",
         ],
@@ -531,6 +543,7 @@ def multiple_input_files(tmp_path):
             {
                 "Metadata_Plate": [plate_id] * len(wells),
                 "Metadata_Well": wells,
+                "Metadata_JCP2022": [f"JCP2022_{i:06d}" for i in range(len(wells))],
                 "Feature1": [float(i) for i in range(len(wells))],
             }
         )
@@ -560,6 +573,8 @@ def test_metadata_collation(multiple_input_files, temp_output_dir):
             "--source",
             "test_source",
             "--verbose",
+            "--jcp2022-cols",
+            "Metadata_JCP2022",
         ],
     )
 
@@ -622,6 +637,12 @@ def multiple_input_files_with_duplicates(tmp_path):
         {
             "Metadata_Plate": ["PLATE001"] * 4,
             "Metadata_Well": ["A01", "A02", "A03", "A04"],
+            "Metadata_JCP2022": [
+                "JCP2022_001122",
+                "JCP2022_002233",
+                "JCP2022_003344",
+                "JCP2022_004455",
+            ],
             "Feature1": [1.0, 2.0, 3.0, 4.0],
         }
     )
@@ -634,6 +655,11 @@ def multiple_input_files_with_duplicates(tmp_path):
         {
             "Metadata_Plate": ["PLATE001"] * 3,
             "Metadata_Well": ["A03", "A04", "A05"],  # A03 and A04 will be duplicates
+            "Metadata_JCP2022": [
+                "JCP2022_001122",
+                "JCP2022_002233",
+                "JCP2022_003344",
+            ],
             "Feature1": [30.0, 40.0, 5.0],
         }
     )
@@ -645,6 +671,11 @@ def multiple_input_files_with_duplicates(tmp_path):
         {
             "Metadata_Plate": ["PLATE002"] * 3,
             "Metadata_Well": ["B01", "B02", "B03"],
+            "Metadata_JCP2022": [
+                "JCP2022_001122",
+                "JCP2022_002233",
+                "JCP2022_003344",
+            ],
             "Feature1": [6.0, 7.0, 8.0],
         }
     )
@@ -677,6 +708,8 @@ def test_metadata_collation_with_duplicates(
             str(temp_output_dir),
             "--source",
             "test_source",
+            "--jcp2022-cols",
+            "Metadata_JCP2022",
             "--verbose",
             "--continue-on-error",  # Add this to ensure all files are processed
         ],
