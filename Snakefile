@@ -14,8 +14,10 @@ include: "rules/map.smk"
 rule all:
     input:
         f"outputs/{config['scenario']}/reformat.done",
-        ap_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_ap_nonrep.parquet",
-        map_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_map_nonrep.parquet",
+        # ap_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_ap_negcon.parquet",
+        # map_negcon_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_map_negcon.parquet",
+        ap_nonrep_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_ap_nonrep.parquet",
+        map_nonrep_path=f"outputs/{config['scenario']}/metrics/{config['pipeline']}_map_nonrep.parquet",
 
 rule reformat:
     input:
