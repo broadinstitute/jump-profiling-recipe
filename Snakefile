@@ -43,7 +43,7 @@ rule write_parquet:
     run:
         if "existing_profile_file" in config:
             shell("mkdir -p $(dirname {output}) && cp {input} {output}".format(input=params.existing_profile_file, output=output))
-        else:    
+        else:
             pp.io.write_parquet(
                 config["sources"],
                 config["plate_types"],
