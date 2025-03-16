@@ -26,23 +26,31 @@ rule reformat:
         touch("outputs/{scenario}/reformat.done"),
     params:
         profile_dir=lambda w: f"outputs/{w.scenario}/",
+        meta_col_new=config.get("meta_col_new", None),
     run:
-        correct.format_check.run_format_check(params.profile_dir)
-
+        if "meta_col_new" in config:
+            correct.format_check.run_format_check(params.profile_dir, params.meta_col_new)
+        else:
+            correct.format_check.run_format_check(params.profile_dir)
 
 rule write_parquet:
     output:
         "outputs/{scenario}/profiles.parquet",
+    params:
+        existing_profile_file=config.get("existing_profile_file", None),
     benchmark:
         "benchmarks/{scenario}/write_parquet.txt"
     run:
-        pp.io.write_parquet(
-            config["sources"],
-            config["plate_types"],
-            output[0],
-            profile_type=config.get("profile_type"),
-            search_additional_metadata=config.get("search_additional_metadata", False)
-        )
+        if "existing_profile_file" in config:
+            shell("mkdir -p $(dirname {output}) && cp {input} {output}".format(input=params.existing_profile_file, output=output))
+        else:    
+            pp.io.write_parquet(
+                config["sources"],
+                config["plate_types"],
+                output[0],
+                profile_type=config.get("profile_type"),
+                search_additional_metadata=config.get("search_additional_metadata", False)
+            )
 
 
 rule compute_norm_stats:
