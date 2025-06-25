@@ -419,6 +419,16 @@ def write_parquet(
         search_additional_metadata,
     )
 
+    # Report NaN/Inf values in the DataFrame
+    # report all rows with more than 10% NaN values using pandas
+    if len(~dframe.isna().mean(axis=1).gt(0.1)) > 0:
+        logger.warning(
+            "Removing rows with more than 10% NaN values. "
+            "This may result in loss of data."
+        )
+        dframe = dframe[~dframe.isna().mean(axis=1).gt(0.1)]
+        dframe = dframe.reset_index(drop=True)
+
     # Drop Image features
     image_col = [col for col in dframe.columns if "Image_" in col]
     dframe.drop(image_col, axis=1, inplace=True)
