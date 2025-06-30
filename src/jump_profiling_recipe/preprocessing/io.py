@@ -324,8 +324,24 @@ def load_data(
         # TODO: The logic here will not work when there are multiple `_emb` columns
 
         # For DL profiles, first determine embedding dimension by reading the first file
-        sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
-        embedding_dim = len(sample_df["all_emb"].iloc[0])
+        columns = pd.read_parquet(paths[0]).columns
+        if "all_emb" not in columns:
+            logger.warning(
+                "Expected 'all_emb' column in the parquet file for deep learning profiles"
+            )
+            expected_cols = ['agp_emb', 'dna_emb', 'er_emb', 'mito_emb', 'rna_emb']
+            sample_df = pd.read_parquet(paths[0], columns=expected_cols).head(1)
+
+            embedding_dim = 0
+            for col in expected_cols:
+                if col not in sample_df.columns:
+                    logger.warning(f"Expected column '{col}' not found in the parquet file")
+                embedding_dim += np.stack(sample_df[col].tolist()).shape[-1]
+
+        else:
+            sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
+            embedding_dim = len(sample_df["all_emb"].iloc[0])
+        
         feat_cols = [f"X_{i}" for i in range(embedding_dim)]
 
         # The "element" field in the Parquet schema represents the array data of "all_emb"
@@ -348,7 +364,18 @@ def load_data(
             meta[int(start) : int(end)] = df[meta_cols].values
 
             # Extract and unpack embeddings
-            embeddings = np.stack(df["all_emb"].values)
+            if "all_emb" not in df.columns:
+                expected_cols = ['agp_emb', 'dna_emb', 'er_emb', 'mito_emb', 'rna_emb']
+                
+                # Extract embeddings from multiple columns
+                embeddings = np.concatenate(
+                    [np.stack(df[col].values) for col in expected_cols if col in df.columns],
+                    axis=1,
+                )
+            else:
+                embeddings = np.stack(df["all_emb"].values)
+
+            
             feats[int(start) : int(end)] = embeddings
     else:
         # standard profile format
