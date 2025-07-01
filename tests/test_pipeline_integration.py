@@ -116,8 +116,8 @@ def test_full_pipeline(test_workspace, pipeline_name):
             "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
         },
         "orf_cpcnn_trimmed": {
-            "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
-            "profiles_wellpos_cc_var_mad_outlier_featselect.parquet": False,
+            "profiles_dropna_wellpos_cc_var_mad_outlier_featselect_sphering_harmony.parquet": True,
+            "profiles_dropna_wellpos_cc_var_mad_outlier_featselect.parquet": False,
         },
         "compound_new_data": {
             "profiles_var_mad_int_featselect_harmony.parquet": True,

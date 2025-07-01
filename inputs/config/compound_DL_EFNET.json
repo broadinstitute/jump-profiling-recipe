@@ -1,6 +1,6 @@
 {
     "scenario": "compound_DL_EFNET",
-    "pipeline": "profiles_var_mad_int_featselect_harmony",
+    "pipeline": "profiles_dropna_var_mad_int_featselect_harmony",
     "keep_image_features": true,
     "use_mad_negcon": true,
     "sources": [

@@ -1,6 +1,6 @@
 {
     "scenario": "orf_cpcnn_trimmed",
-    "pipeline": "profiles_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
+    "pipeline": "profiles_dropna_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
     "keep_image_features": false,
     "use_mad_negcon": false,
     "sources": [
