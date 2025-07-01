@@ -1,0 +1,17 @@
+{
+    "scenario": "orf_efficientnet_trimmed",
+    "pipeline": "profiles_dropna_wellpos_cc_var_mad_outlier_featselect_sphering_harmony",
+    "keep_image_features": false,
+    "use_mad_negcon": false,
+    "sources": [
+        "source_4"
+    ],
+    "plate_types": [
+        "ORF"
+    ],
+    "profile_type": "efficientnet_v2_imagenet21k_s_feature_vector_2_0260bc96",
+    "batch_key": "Metadata_Plate",
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 2,
+    "cc_path": "inputs/cell_counts/orf_cell_counts.csv.gz"
+}

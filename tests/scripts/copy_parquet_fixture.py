@@ -6,7 +6,7 @@ For all profiles:
 - All columns that start with "Metadata"
 Plus:
 - For deep learning profiles (containing 'cpcnn' or 'efficientnet'):
-  the first 3 non-Metadata columns
+  the first 3 values per embedding column if only one exists, otherwise 1 value per embedding column
 - For other profiles: columns starting with "Cells_AreaShape_Zernike5"
 The resulting files are stored in the tests/fixtures/ directory, maintaining the
 same directory structure as inputs/.
@@ -28,7 +28,8 @@ def is_deep_learning_profile(filepath):
 def filter_columns(df, filepath):
     """
     Given a DataFrame and filepath, return a new DataFrame containing:
-    - For deep learning profiles: Metadata columns, and the first 3 values of the embedding columns
+    - For deep learning profiles: Metadata columns, and the first 3 values per embedding column
+      if only one exists, otherwise 1 value per embedding column
     - For other profiles: all Metadata columns, and columns starting with 'Cells_AreaShape_Zernike_5'
     """
 
@@ -39,10 +40,14 @@ def filter_columns(df, filepath):
         # Create a copy of the dataframe with required columns
         filtered_df = df[metadata_cols + emb_cols].copy()
 
-        # For each embedding column, keep only the first 3 values of each array
+        # Determine how many values to keep per embedding column
+        # If only one embedding column, keep 3 values; otherwise keep 1 value per column
+        values_to_keep = 3 if len(emb_cols) == 1 else 1
+
+        # For each embedding column, keep only the specified number of values
         for col in emb_cols:
             filtered_df[col] = filtered_df[col].apply(
-                lambda x: x[:3] if hasattr(x, "__len__") else x
+                lambda x: x[:values_to_keep] if hasattr(x, "__len__") else x
             )
     else:
         metadata_cols = [col for col in df.columns if col.startswith("Metadata")]
@@ -70,10 +75,12 @@ def main():
         # "inputs/profiles/source_5/workspace/profiles/JUMPCPE-20210903-Run27_20210904_215148/APTJUM422/APTJUM422.parquet",
         # "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
         # "inputs/profiles_cpcnn_zenodo_7114558/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
-        "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121328/BR00121328.parquet",
-        "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121332/BR00121332.parquet",
-        "inputs/profiles/source_molglue/workspace/metadata/plate.parquet",
-        "inputs/profiles/source_molglue/workspace/metadata/well.parquet",
+        "inputs/profiles_efficientnet_v2_imagenet21k_s_feature_vector_2_0260bc96/source_4/workspace/profiles/2021_04_26_Batch1/BR00117037/BR00117037.parquet",
+        "inputs/profiles_efficientnet_v2_imagenet21k_s_feature_vector_2_0260bc96/source_4/workspace/profiles/2021_04_26_Batch1/BR00117038/BR00117038.parquet",
+        # "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121328/BR00121328.parquet",
+        # "inputs/profiles/source_molglue/workspace/profiles/2021_04_17_Batch1/BR00121332/BR00121332.parquet",
+        # "inputs/profiles/source_molglue/workspace/metadata/plate.parquet",
+        # "inputs/profiles/source_molglue/workspace/metadata/well.parquet",
     ]
 
     # Convert source paths to absolute paths
