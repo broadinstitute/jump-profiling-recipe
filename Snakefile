@@ -146,7 +146,7 @@ rule drop_na_rows:
     benchmark:
         "benchmarks/{scenario}/{pipeline}_dropna.txt"
     params:
-        na_threshold=config.get("na_threshold", 0.0),
+        na_threshold=config.get("na_threshold", 0.1),
         max_rows_to_drop=config.get("max_rows_to_drop", 100),
     run:
         correct.corrections.remove_na_rows(
