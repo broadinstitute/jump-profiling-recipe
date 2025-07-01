@@ -138,6 +138,25 @@ rule remove_outliers:
         pp.clean.remove_outliers(*input, *output)
 
 
+rule drop_na_rows:
+    input:
+        "outputs/{scenario}/{pipeline}.parquet",
+    output:
+        "outputs/{scenario}/{pipeline}_dropna.parquet",
+    benchmark:
+        "benchmarks/{scenario}/{pipeline}_dropna.txt"
+    params:
+        na_threshold=config.get("na_threshold", 0.1),
+        max_rows_to_drop=config.get("max_rows_to_drop", 100),
+    run:
+        correct.corrections.remove_na_rows(
+            *input,
+            *output,
+            na_threshold=params.na_threshold,
+            max_rows_to_drop=params.max_rows_to_drop
+        )
+
+
 rule annotate_genes:
     input:
         "outputs/{scenario}/{pipeline}.parquet",

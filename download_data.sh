@@ -28,7 +28,7 @@ fi
 for source_id in "${sources[@]}";
 do
     if [ -n "$embedding_id" ]; then
-        aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace_dl/${embedding_id}/profiles" inputs/profiles_${embedding_id}/${source_id}/workspace/profiles
+        aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace_dl/profiles/${embedding_id}" inputs/profiles_${embedding_id}/${source_id}/workspace/profiles
     else
         aws s3 sync --no-sign-request "${BASEPATH}/${source_id}/workspace/profiles" inputs/profiles/${source_id}/workspace/profiles
     fi

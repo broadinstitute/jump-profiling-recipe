@@ -286,6 +286,7 @@ def load_data(
     plate_types: list[str],
     profile_type: str | None = None,
     search_additional_metadata: bool = False,
+    embedding_columns: str | list[str] | None = None,
 ) -> pd.DataFrame:
     """Load all plates given the parameters.
 
@@ -299,13 +300,16 @@ def load_data(
         If provided, indicates a deep learning profile type
     search_additional_metadata : bool, optional
         If True, automatically search for additional metadata in the profiles directory structure
+    embedding_columns : str | list[str] | None, optional
+        For DL profiles: either a single column name (e.g., "all_emb") or
+        a list of column names (e.g., ["agp_emb", "dna_emb", ...]).
+        If None, will auto-detect based on available columns.
 
     Returns
     -------
     pd.DataFrame
         Combined DataFrame containing all plates' data
     """
-    # TODO: allow for other ways of storing embeddings, like one per channel
     paths, slices = prealloc_params(
         sources,
         plate_types,
@@ -321,11 +325,44 @@ def load_data(
     is_dl_profile = profile_type is not None
 
     if is_dl_profile:
-        # TODO: The logic here will not work when there are multiple `_emb` columns
+        # Auto-detect embedding format if not specified
+        if embedding_columns is None:
+            columns = pd.read_parquet(paths[0]).columns
+            if "all_emb" in columns:
+                embedding_columns = "all_emb"
+            else:
+                # Try known channel columns
+                default_channels = [
+                    "agp_emb",
+                    "dna_emb",
+                    "er_emb",
+                    "mito_emb",
+                    "rna_emb",
+                ]
+                available_channels = [col for col in default_channels if col in columns]
+                if available_channels:
+                    embedding_columns = available_channels
+                    logger.info(f"Auto-detected embedding columns: {embedding_columns}")
+                else:
+                    raise ValueError(
+                        "No known embedding columns found in data. Please specify "
+                        "embedding_columns parameter."
+                    )
 
-        # For DL profiles, first determine embedding dimension by reading the first file
-        sample_df = pd.read_parquet(paths[0], columns=["all_emb"]).head(1)
-        embedding_dim = len(sample_df["all_emb"].iloc[0])
+        # Determine embedding dimension based on column type
+        if isinstance(embedding_columns, str):
+            # Single column mode
+            sample_df = pd.read_parquet(paths[0], columns=[embedding_columns]).head(1)
+            embedding_dim = len(sample_df[embedding_columns].iloc[0])
+        else:
+            # Multi-column mode
+            sample_df = pd.read_parquet(paths[0], columns=embedding_columns).head(1)
+            embedding_dim = sum(
+                np.stack(sample_df[col].tolist()).shape[-1]
+                for col in embedding_columns
+                if col in sample_df.columns
+            )
+
         feat_cols = [f"X_{i}" for i in range(embedding_dim)]
 
         # The "element" field in the Parquet schema represents the array data of "all_emb"
@@ -348,7 +385,20 @@ def load_data(
             meta[int(start) : int(end)] = df[meta_cols].values
 
             # Extract and unpack embeddings
-            embeddings = np.stack(df["all_emb"].values)
+            if isinstance(embedding_columns, str):
+                # Single column mode
+                embeddings = np.stack(df[embedding_columns].values)
+            else:
+                # Multi-column mode
+                embeddings = np.concatenate(
+                    [
+                        np.stack(df[col].values)
+                        for col in embedding_columns
+                        if col in df.columns
+                    ],
+                    axis=1,
+                )
+
             feats[int(start) : int(end)] = embeddings
     else:
         # standard profile format

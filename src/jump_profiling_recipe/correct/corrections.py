@@ -33,30 +33,92 @@ logger.setLevel(logging.INFO)
 # ------------------------------
 
 
-def drop_rows_with_na_features(ann_dframe: pd.DataFrame) -> pd.DataFrame:
+def drop_rows_with_na_features(
+    ann_dframe: pd.DataFrame, na_threshold: float = 0.0, max_rows_to_drop: int = 100
+) -> pd.DataFrame:
     """Drop rows containing NA values in feature columns.
 
     Parameters
     ----------
     ann_dframe : pandas.DataFrame
         Input dataframe to process
+    na_threshold : float, optional
+        Maximum fraction of NA values allowed per row (0.0 to 1.0).
+        Default is 0.0 (drop rows with any NA values).
+        For example, 0.1 means drop rows with >10% NA values.
+    max_rows_to_drop : int, optional
+        Maximum number of rows that can be dropped. If more rows would be dropped,
+        returns original dataframe unchanged. Default is 100.
 
     Returns
     -------
     pandas.DataFrame
-        If fewer than 100 rows would be dropped:
-            Returns cleaned dataframe with rows containing NA values in feature columns removed
+        If fewer than max_rows_to_drop rows would be dropped:
+            Returns cleaned dataframe with rows exceeding NA threshold removed
         Otherwise:
             Returns original dataframe unchanged
     """
     org_shape = ann_dframe.shape[0]
-    ann_dframe_clean = ann_dframe[
-        ~ann_dframe[get_feature_columns(ann_dframe)].isnull().any(axis=1)
-    ]
+    feature_cols = get_feature_columns(ann_dframe)
+
+    # Calculate fraction of NA values per row
+    na_fraction = ann_dframe[feature_cols].isnull().mean(axis=1)
+
+    # Keep rows where NA fraction is <= threshold
+    ann_dframe_clean = ann_dframe[na_fraction <= na_threshold].copy()
     ann_dframe_clean.reset_index(drop=True, inplace=True)
-    if org_shape - ann_dframe_clean.shape[0] < 100:
+
+    rows_dropped = org_shape - ann_dframe_clean.shape[0]
+    if rows_dropped < max_rows_to_drop:
+        if rows_dropped > 0:
+            logger.info(
+                f"Dropped {rows_dropped} rows with >{na_threshold:.1%} NA values in features"
+            )
         return ann_dframe_clean
-    return ann_dframe
+    else:
+        logger.warning(
+            f"Would drop {rows_dropped} rows (exceeds max_rows_to_drop={max_rows_to_drop}), keeping original dataframe"
+        )
+        return ann_dframe
+
+
+def remove_na_rows(
+    input_path: str,
+    output_path: str,
+    na_threshold: float = 0.0,
+    max_rows_to_drop: int = 100,
+) -> None:
+    """Remove rows with NA values in feature columns from a parquet file.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to input parquet file containing the DataFrame.
+    output_path : str
+        Path where the cleaned DataFrame will be saved as parquet.
+    na_threshold : float, optional
+        Maximum fraction of NA values allowed per row (0.0 to 1.0).
+        Default is 0.0 (drop rows with any NA values).
+        For example, 0.1 means drop rows with >10% NA values.
+    max_rows_to_drop : int, optional
+        Maximum number of rows that can be dropped. If more rows would be dropped,
+        returns original dataframe unchanged. Default is 100.
+
+    Returns
+    -------
+    None
+        Writes cleaned DataFrame to output_path.
+
+    Notes
+    -----
+    This function drops rows containing NA values in feature columns,
+    but only if fewer than max_rows_to_drop rows would be dropped.
+    """
+    dframe = pd.read_parquet(input_path)
+    dframe = drop_rows_with_na_features(
+        dframe, na_threshold=na_threshold, max_rows_to_drop=max_rows_to_drop
+    )
+    dframe.to_parquet(output_path)
 
 
 def drop_features_with_na(df: pd.DataFrame) -> pd.DataFrame:

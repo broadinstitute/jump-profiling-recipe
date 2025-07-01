@@ -28,7 +28,6 @@ dev = [
     "python-lsp-ruff>=2.2.2",
     "python-lsp-server>=1.12.0",
     "sqlparse>=0.5.3",
-    "snakefmt>=0.10.2",
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
 ]
