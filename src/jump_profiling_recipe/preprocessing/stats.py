@@ -235,7 +235,7 @@ def select_variant_features(
     # Select variant_features
     norm_stats = norm_stats.query("mad!=0 and abs_coef_var>1e-3")
     groups = norm_stats.groupby("Metadata_Plate", observed=True)["feature"]
-    variant_features = set.intersection(*groups.agg(set).tolist())
+    variant_features = set.intersection(set(dframe.columns), *groups.agg(set).tolist())
 
     # Select plates with variant features
     norm_stats = norm_stats.query("feature in @variant_features")
