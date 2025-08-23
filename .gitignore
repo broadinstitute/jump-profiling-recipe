@@ -27,6 +27,10 @@ __pycache__
 *.egg-info
 .vscode/settings.json
 .claude/settings.local.json
-CLAUDE.md
 .mcp.json
 requirements/.current-requirement
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+inputs/config/compound_DL_CPCNN_no_source7.json
+inputs/config/compound_no_source7.json

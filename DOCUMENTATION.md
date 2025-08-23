@@ -15,8 +15,8 @@ Install
 ```bash
 git clone <repository-url>
 cd jump-profiling-recipe
-uv sync && uv pip install -e .
-source .venv/bin/activate
+pixi install
+pixi shell
 ```
 
 Download well-level aggregated profiles

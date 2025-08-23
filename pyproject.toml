@@ -1,33 +1,76 @@
 [project]
-name = "jump-profiling-recipe"
-version = "0.3.0"
+authors = [
+    { name = "Sam Chen", email = "zchen001016@gmail.com" },
+    { name = "John Arevalo", email = "johnarevalo@gmail.com" }
+]
 description = "Workflow for processing cpg0016-jump profiles"
 readme = "README.md"
-requires-python = ">=3.11"
 dependencies = [
-    "awscli>=1.38.0",
-    "copairs>=0.4.4",
-    "harmonypy>=0.0.10",
-    "jq>=1.8.0",
-    "numpy>=2.2.3",
-    "pandas>=2.2.3",
-    "patsy>=1.0.1",
-    "pyarrow>=19.0.1",
-    "scikit-learn>=1.6.1",
-    "snakemake>=8.28.0",
-    "statsmodels>=0.14.4",
-    "tqdm>=4.67.1",
-]
-[dependency-groups]
-dev = [
-    "ruff>=0.9.6",
-    "pre-commit>=4.1.0",
-    "snakefmt>=0.10.2",
-    "pytest>=8.3.4",
-    "ipdb>=0.13.13",
-    "python-lsp-ruff>=2.2.2",
-    "python-lsp-server>=1.12.0",
-    "sqlparse>=0.5.3",
-    "pytest-cov>=6.0.0",
-    "pytest-xdist>=3.6.1",
-]
+    "copairs @ git+https://github.com/cytomining/copairs.git@v0.4.4",
+    "harmonypy @ git+https://github.com/shntnu/harmonypy.git@cupy-migrate"
+    ]
+name = "jump-profiling-recipe"
+requires-python = ">= 3.11"
+version = "0.3.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["osx-arm64", "linux-64"]
+
+[tool.pixi.pypi-dependencies]
+jump_profiling_recipe = { path = ".", editable = true }
+
+[tool.pixi.dependencies]
+awscli = ">=2.28.16,<3"
+jq = ">=1.8.1,<2"
+numpy = ">=2.3.2,<3"
+pandas = ">=2.3.2,<3"
+patsy = ">=1.0.1,<2"
+pyarrow = ">=21.0.0,<22"
+scikit-learn = ">=1.7.1,<2"
+statsmodels = ">=0.14.5,<0.15"
+snakemake = ">=9.9.0,<10"
+pre-commit = ">=4.3.0,<5"
+
+[tool.pixi.feature.dev.dependencies]
+ruff = "*"
+pre-commit = "*"
+snakefmt = "*"
+pytest = "*"
+ipdb = "*"
+python-lsp-ruff = "*"
+python-lsp-server = "*"
+sqlparse = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+
+[tool.pixi.feature.gpu]
+platforms = ["linux-64", "win-64"]
+
+[tool.pixi.feature.gpu.dependencies]
+cupy = "*"
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+gpu = ["gpu"]
+
+[tool.pixi.tasks]
+test = "pytest"
+cuda-smoke = """
+python -c "import sys; \
+import cupy as cp; \
+assert cp.cuda.runtime.getDeviceCount()>0, 'No CUDA device'; \
+x=cp.array([2.0], dtype=cp.float32); \
+y=cp.array([40.0], dtype=cp.float32); \
+z=float((x*y).sum().get()); \
+print('CUDA OK' if z==80.0 else 'CUDA FAILED'); \
+sys.exit(0 if z==80.0 else 1)"
+"""
