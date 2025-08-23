@@ -31,20 +31,21 @@ jobs:
       with:
         pixi-version: v0.53.0
         manifest-path: pyproject.toml
+        environments: dev  # Use dev environment for pytest-cov
         cache: true
         # Only write to cache from main branch
         cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
     - name: Install dependencies
-      run: pixi install
+      run: pixi install -e dev
 
     - name: Run tests
-      run: pixi run test
+      run: pixi run -e dev test
 
     # Run coverage only on Python 3.11 and only for one test case
     - name: Run tests with coverage (Python 3.11 only)
       if: matrix.python-version == '3.11'
-      run: pixi run pytest tests/test_pipeline_integration.py::test_full_pipeline[compound_trimmed] --cov=jump_profiling_recipe --cov-report=xml --cov-report=term
+      run: pixi run -e dev pytest tests/test_pipeline_integration.py::test_full_pipeline[compound_trimmed] --cov=jump_profiling_recipe --cov-report=xml --cov-report=term
 
     - name: Upload coverage reports
       if: matrix.python-version == '3.11'
@@ -66,17 +67,19 @@ jobs:
       uses: prefix-dev/setup-pixi@v0.9.0
       with:
         pixi-version: v0.53.0
+        manifest-path: pyproject.toml
+        environments: dev  # Use dev environment which has ruff
         cache: true
         cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
 
     - name: Install dependencies
-      run: pixi install
+      run: pixi install -e dev
 
     - name: Run ruff check
-      run: pixi run ruff check src/ --config .ruff.toml
+      run: pixi run -e dev ruff check src/ --config .ruff.toml
 
     - name: Run ruff format check
-      run: pixi run ruff format src/ --check --config .ruff.toml
+      run: pixi run -e dev ruff format src/ --check --config .ruff.toml
 
   integration-test:
     name: Integration Test - Snakemake
@@ -102,5 +105,5 @@ jobs:
 
     - name: Test CLI converter
       run: |
-        # Test that the CLI is properly installed
-        pixi run jump-convert --help
+        # Test that the CLI is properly installed (after package installation)
+        pixi run python -m jump_profiling_recipe.cli --help

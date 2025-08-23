@@ -3117,7 +3117,7 @@ packages:
 - pypi: ./
   name: jump-profiling-recipe
   version: 0.3.0
-  sha256: ee68a54cd2b1098c64d2a7859432dacde02c54cbb2bf0d0812e45ce92b18e11a
+  sha256: 1c056c0fd9c38d43ed553a4f98fb5a414ed40d531f60dcf38104b7dad60e8f6a
   requires_dist:
   - copairs @ git+https://github.com/cytomining/copairs.git@v0.4.4
   - harmonypy @ git+https://github.com/shntnu/harmonypy.git@cupy-migrate

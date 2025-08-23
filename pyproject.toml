@@ -13,6 +13,9 @@ name = "jump-profiling-recipe"
 requires-python = ">= 3.11"
 version = "0.3.0"
 
+[project.scripts]
+jump-convert = "jump_profiling_recipe.cli:cli"
+
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
