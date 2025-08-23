@@ -220,9 +220,9 @@ rule harmony:
     params:
         batch_key=config["batch_key"],
         thread_config = {
-            "OPENBLAS_NUM_THREADS": "128",
-            "OMP_NUM_THREADS": "8",
-            "MKL_NUM_THREADS": "8",
+            "OPENBLAS_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
         },
     run:
         correct.apply_harmony_correction(*input, *params, *output)
