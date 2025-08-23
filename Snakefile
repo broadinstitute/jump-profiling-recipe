@@ -223,6 +223,7 @@ rule harmony:
             "OPENBLAS_NUM_THREADS": "1",
             "OMP_NUM_THREADS": "1",
             "MKL_NUM_THREADS": "1",
+            "use_gpu": config.get("use_gpu", False),
         },
     run:
         correct.apply_harmony_correction(*input, *params, *output)
