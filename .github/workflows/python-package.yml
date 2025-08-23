@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# This workflow will install Python dependencies, run tests and lint with pixi
+# For more information see: https://pixi.sh/dev/integration/ci/github_actions/
 
 name: jump-profiling-recipe
 
@@ -9,24 +9,97 @@ on:
   pull_request:
     branches: [ "main" ]
 
-jobs:
-  build:
+# Cancel in-progress runs when a new run is triggered on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  test:
+    name: Test - Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11"]
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install uv and set the python version
-      uses: astral-sh/setup-uv@v5
+
+    - name: Setup pixi
+      uses: prefix-dev/setup-pixi@v0.9.0
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install the env
-      run: uv sync --all-extras --dev
-    - name: Install the package
-      run: uv pip install -e .
+        pixi-version: v0.35.0
+        cache: true
+        # Only write to cache from main branch
+        cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+    - name: Install dependencies
+      run: pixi install
+
     - name: Run tests
-      run: uv run pytest -s
+      run: pixi run test
+
+    # Run coverage only on Python 3.11 and only for one test case
+    - name: Run tests with coverage (Python 3.11 only)
+      if: matrix.python-version == '3.11'
+      run: pixi run pytest tests/test_pipeline_integration.py::test_full_pipeline[compound_trimmed] --cov=jump_profiling_recipe --cov-report=xml --cov-report=term
+
+    - name: Upload coverage reports
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-compound-trimmed
+        fail_ci_if_error: false
+
+  lint:
+    name: Lint and Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup pixi
+      uses: prefix-dev/setup-pixi@v0.9.0
+      with:
+        pixi-version: v0.35.0
+        cache: true
+        cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+    - name: Install dependencies
+      run: pixi install
+
+    - name: Run ruff check
+      run: pixi run ruff check src/ --config .ruff.toml
+
+    - name: Run ruff format check
+      run: pixi run ruff format src/ --check --config .ruff.toml
+
+  integration-test:
+    name: Integration Test - Snakemake
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup pixi
+      uses: prefix-dev/setup-pixi@v0.9.0
+      with:
+        pixi-version: v0.35.0
+        cache: true
+        cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+
+    - name: Install dependencies
+      run: pixi install
+
+    - name: Verify Snakemake workflow (dry run)
+      run: |
+        # Test that the Snakemake workflow is valid
+        pixi run snakemake -n --configfile inputs/config/compound.json
+
+    - name: Test CLI converter
+      run: |
+        # Test that the CLI is properly installed
+        pixi run jump-convert --help
