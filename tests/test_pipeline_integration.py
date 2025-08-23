@@ -12,6 +12,13 @@ from snakemake.api import (
     StorageSettings,
 )
 
+try:
+    import cupy  # noqa: F401
+
+    HAS_CUPY = True
+except ImportError:
+    HAS_CUPY = False
+
 
 def run_workflow(snakefile: Path, configfile: Path):
     """Run programmatically a snakefile using the given config"""
@@ -78,6 +85,10 @@ def test_workspace(tmp_path_factory):
         "orf_cpcnn_trimmed",
         "orf_efficientnet_trimmed",
         "compound_new_data",
+        pytest.param(
+            "compound_trimmed_gpu",
+            marks=pytest.mark.skipif(not HAS_CUPY, reason="cupy not available"),
+        ),
     ],
 )
 def test_full_pipeline(test_workspace, pipeline_name):
@@ -105,6 +116,10 @@ def test_full_pipeline(test_workspace, pipeline_name):
             "profiles_var_mad_int_featselect.parquet": False,
         },
         "compound_trimmed": {
+            "profiles_var_mad_int_featselect_harmony.parquet": True,
+            "profiles_var_mad_int_featselect.parquet": False,
+        },
+        "compound_trimmed_gpu": {
             "profiles_var_mad_int_featselect_harmony.parquet": True,
             "profiles_var_mad_int_featselect.parquet": False,
         },
@@ -151,13 +166,23 @@ def test_full_pipeline(test_workspace, pipeline_name):
 
         # Then compare numerical columns with or without tolerance based on allow_approximate
         numerical_cols = [col for col in actual_df.columns if col not in metadata_cols]
+
+        # Hacky: Use higher tolerance for GPU pipeline
+        if pipeline_name == "compound_trimmed_gpu":
+            # MUCH higher tolerance for GPU because we are comparing to the same CPU results
+            rtol = 1e-1 if allow_approximate else 0
+            atol = 1e-1 if allow_approximate else 0
+        else:
+            rtol = 1e-4 if allow_approximate else 0
+            atol = 1e-4 if allow_approximate else 0
+
         try:
             # TODO: remove abs function by updating the fixture.
             pd.testing.assert_frame_equal(
                 actual_df[numerical_cols].abs(),
                 expected_df[numerical_cols].abs(),
-                rtol=1e-4 if allow_approximate else 0,  # Only use tolerance if allowed
-                atol=1e-4 if allow_approximate else 0,  # Only use tolerance if allowed
+                rtol=rtol,
+                atol=atol,
                 check_dtype=False,  # Allow float32/float64 differences
             )
         except AssertionError as e:
