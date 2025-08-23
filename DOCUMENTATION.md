@@ -141,19 +141,56 @@ digraph snakemake_dag {
 
 ### Advanced Workflow Options
 
-Parallel exxecution:
+#### Performance Optimization
+
+##### Thread Limiting for Numerical Libraries
+
+When running the workflow with parallel execution (`-c` flag), you may need to limit the number of threads used by numerical libraries (NumPy, BLAS, etc.):
+
+```bash
+MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 pixi run snakemake -c4 --configfile inputs/config/compound.json
+```
+
+Without these settings, numerical libraries might use all available CPU cores for each Snakemake job, potentially causing thread oversubscription and performance degradation. This is a common issue when combining process-level parallelism (Snakemake jobs) with thread-level parallelism (BLAS operations). See [scikit-learn's parallelism documentation](https://scikit-learn.org/stable/computing/parallelism.html) for more details on this interaction.
+
+##### GPU Acceleration for Harmony Batch Correction
+
+The Harmony batch correction step supports GPU acceleration for significant speedup on large datasets:
+
+1. Ensure you have the GPU environment installed:
+```bash
+pixi install -e gpu
+pixi shell -e gpu
+```
+
+2. Enable GPU in your configuration file:
+```json
+{
+  "use_gpu": true,
+  // ... other configuration
+}
+```
+
+3. Run with thread limiting:
+```bash
+MKL_NUM_THREADS=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 pixi run -e gpu snakemake -c4 --configfile inputs/config/compound.json
+```
+
+The GPU acceleration will automatically fall back to CPU if CUDA is unavailable.
+
+#### Parallel Execution
 
 ```bash
 snakemake -c4 --configfile inputs/config/compound.json  # Using 4 cores
 ```
 
-Dry run:
+#### Dry Run
 
 ```bash
 snakemake -n --configfile inputs/config/compound.json
 ```
 
-Output targeting
+#### Output Targeting
 
 ```bash
 snakemake -c1 outputs/compound/profiles_var_mad_int_featselect_harmony.parquet --configfile inputs/config/compound.json
