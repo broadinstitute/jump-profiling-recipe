@@ -219,10 +219,6 @@ rule harmony:
         "benchmarks/{scenario}/{pipeline}_harmony.txt"
     params:
         batch_key=config["batch_key"],
-        thread_config = {
-            "OPENBLAS_NUM_THREADS": "128",
-            "OMP_NUM_THREADS": "8",
-            "MKL_NUM_THREADS": "8",
-        },
+        use_gpu=config.get("use_gpu", False),
     run:
-        correct.apply_harmony_correction(*input, *params, *output)
+        correct.apply_harmony_correction(input[0], params.batch_key, params.use_gpu, output[0])

@@ -1,0 +1,17 @@
+{
+    "scenario": "compound_trimmed_gpu",
+    "pipeline": "profiles_var_mad_int_featselect_harmony",
+    "keep_image_features": true,
+    "use_mad_negcon": true,
+    "use_gpu": true,
+    "sources": [
+        "source_5"
+    ],
+    "plate_types": [
+        "COMPOUND",
+        "TARGET2"
+    ],
+    "batch_key": "Metadata_Plate",
+    "sphering_method": "ZCA-cor",
+    "sphering_n_opts": 2
+}
