@@ -8,13 +8,14 @@ File Structure:
 - Integration: High-level functions that combine multiple operations
 """
 
-import logging
-import pandas as pd
-import re
-from .utils import validate_columns
-from collections.abc import Iterable
 import glob
+import logging
+import re
+from collections.abc import Iterable
 
+import pandas as pd
+
+from .utils import validate_columns
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
