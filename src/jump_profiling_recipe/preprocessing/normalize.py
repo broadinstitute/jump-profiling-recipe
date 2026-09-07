@@ -4,6 +4,7 @@ Functions for normalizing feature data
 
 import numpy as np
 import pandas as pd
+
 from .io import merge_parquet, split_parquet
 from .utils import validate_columns
 
