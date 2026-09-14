@@ -2,10 +2,11 @@
 Functions for computing metrics
 """
 
+from typing import Any
+
 import copairs.map as copairs
-import pandas as pd
 import numpy as np
-from typing import List, Optional, Dict, Any
+import pandas as pd
 
 from .io import split_parquet
 from .metadata import NEGCON_CODES
@@ -14,9 +15,9 @@ from .utils import validate_columns
 
 def _index(
     meta: pd.DataFrame,
-    plate_types: List[str],
-    ignore_codes: Optional[List[str]] = None,
-    include_codes: Optional[List[str]] = None,
+    plate_types: list[str],
+    ignore_codes: list[str] | None = None,
+    include_codes: list[str] | None = None,
 ) -> np.ndarray:
     """Select samples to be used in mAP computation based on filtering criteria.
 
@@ -115,8 +116,8 @@ DEFAULT_MAP_PARAMS = {
 def average_precision_negcon(
     parquet_path: str,
     ap_path: str,
-    plate_types: List[str],
-    ap_params: Optional[Dict[str, Any]] = None,
+    plate_types: list[str],
+    ap_params: dict[str, Any] | None = None,
 ) -> None:
     """Calculate average precision with respect to negative controls.
 
@@ -162,8 +163,8 @@ def average_precision_negcon(
 def average_precision_nonrep(
     parquet_path: str,
     ap_path: str,
-    plate_types: List[str],
-    ap_params: Optional[Dict[str, Any]] = None,
+    plate_types: list[str],
+    ap_params: dict[str, Any] | None = None,
 ) -> None:
     """Calculate average precision with respect to non-replicate perturbations.
 
@@ -207,7 +208,7 @@ def average_precision_nonrep(
 def mean_average_precision(
     ap_path: str,
     map_path: str,
-    map_params: Optional[Dict[str, Any]] = None,
+    map_params: dict[str, Any] | None = None,
 ) -> None:
     """Calculate mean average precision from average precision scores.
 

@@ -160,9 +160,7 @@ def test_full_pipeline(test_workspace, pipeline_name):
                 actual_df[metadata_cols], expected_df[metadata_cols], check_dtype=True
             )
         except AssertionError as e:
-            raise AssertionError(
-                f"Metadata columns don't match in {filename}:\n{str(e)}"
-            )
+            raise AssertionError(f"Metadata columns don't match in {filename}:\n{e!s}")
 
         # Then compare numerical columns with or without tolerance based on allow_approximate
         numerical_cols = [col for col in actual_df.columns if col not in metadata_cols]
@@ -186,9 +184,7 @@ def test_full_pipeline(test_workspace, pipeline_name):
                 check_dtype=False,  # Allow float32/float64 differences
             )
         except AssertionError as e:
-            raise AssertionError(
-                f"Numerical columns don't match in {filename}:\n{str(e)}"
-            )
+            raise AssertionError(f"Numerical columns don't match in {filename}:\n{e!s}")
 
     for parquet_filename, allow_approximate in expected_parquet_files.items():
         profiles_file = (
@@ -224,6 +220,6 @@ def test_full_pipeline(test_workspace, pipeline_name):
                     f"Column mismatch in {parquet_filename}:\n"
                     f"Missing columns: {missing_cols}\n"
                     f"Extra columns: {extra_cols}\n"
-                    f"Original error: {str(e)}"
+                    f"Original error: {e!s}"
                 )
             raise
