@@ -2,10 +2,12 @@
 Functions for formatting profiles for public release
 """
 
-import os
-import pandas as pd
-import numpy as np
 import logging
+import os
+
+import numpy as np
+import pandas as pd
+
 from ..preprocessing import io
 
 logger = logging.getLogger(__name__)

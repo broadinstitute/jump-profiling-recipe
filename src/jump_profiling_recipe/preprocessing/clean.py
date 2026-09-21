@@ -7,9 +7,11 @@ domain-specific knowledge.
 For biology-specific corrections and annotations, see correct/corrections.py
 """
 
-import pandas as pd
-from .metadata import get_feature_columns
 import logging
+
+import pandas as pd
+
+from .metadata import get_feature_columns
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
