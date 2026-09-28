@@ -1,9 +1,11 @@
 """Unit tests for drop_rows_with_na_features and remove_na_rows functions."""
 
-import pandas as pd
-import numpy as np
-import tempfile
 import os
+import tempfile
+
+import numpy as np
+import pandas as pd
+
 from jump_profiling_recipe.correct.corrections import (
     drop_rows_with_na_features,
     remove_na_rows,

@@ -3,7 +3,9 @@ Functions for batch correction
 """
 
 import logging
+
 from harmonypy import run_harmony
+
 from ..preprocessing import io
 
 logger = logging.getLogger(__name__)
