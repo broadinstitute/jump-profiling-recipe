@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import logging
-from pathlib import Path
-from typing import List, Optional, Set
 import time
+from pathlib import Path
 
 import click
 import pandas as pd
@@ -20,7 +19,7 @@ def get_output_path(
     input_file: Path,
     output_dir: Path,
     file_type: str = "profiles",
-    metadata_level: Optional[str] = None,
+    metadata_level: str | None = None,
 ) -> Path:
     """
     Generate output path preserving two directory levels above the input file.
@@ -99,7 +98,7 @@ def extract_batch_from_path(input_file: Path) -> str:
         return "unknown_batch"
 
 
-def read_input_files(file_list: Path) -> List[Path]:
+def read_input_files(file_list: Path) -> list[Path]:
     """Read list of input files from a text file."""
     if not file_list.exists():
         raise click.ClickException(f"Input file list not found: {file_list}")
@@ -139,7 +138,7 @@ def read_input_files(file_list: Path) -> List[Path]:
     return files
 
 
-def read_mandatory_feature_cols(feature_file: Path) -> Set[str]:
+def read_mandatory_feature_cols(feature_file: Path) -> set[str]:
     """Read mandatory feature names from a file.
 
     Args:
@@ -171,8 +170,8 @@ def process_file(
     output_dir: Path,
     source: str,
     jcp2022_cols: str,
-    mandatory_feature_cols: Optional[Set[str]] = None,
-    mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    mandatory_feature_cols: set[str] | None = None,
+    mandatory_metadata_cols: list[str] = ["Metadata_Plate", "Metadata_Well"],
     default_plate_type: str = "UNKNOWN",
 ) -> None:
     """
@@ -376,13 +375,13 @@ def process_file(
 
 
 def process_files(
-    input_files: List[Path],
+    input_files: list[Path],
     output_dir: Path,
     source: str,
     jcp2022_cols: str,
-    mandatory_feature_cols: Optional[Set[str]] = None,
+    mandatory_feature_cols: set[str] | None = None,
     continue_on_error: bool = False,
-    mandatory_metadata_cols: List[str] = ["Metadata_Plate", "Metadata_Well"],
+    mandatory_metadata_cols: list[str] = ["Metadata_Plate", "Metadata_Well"],
     default_plate_type: str = "UNKNOWN",
 ) -> None:
     """Process multiple input files.
@@ -422,7 +421,7 @@ def process_files(
             logger.debug(f"Processed {input_file} in {file_elapsed:.2f} seconds")
         except Exception as e:
             failures += 1
-            logger.error(f"Error processing {input_file}: {str(e)}")
+            logger.error(f"Error processing {input_file}: {e!s}")
             if not continue_on_error:
                 logger.error(
                     f"Processing halted after {i + 1}/{total_files} files. Use --continue-on-error to process all files."
@@ -472,7 +471,7 @@ def collate_metadata_files(output_dir: Path) -> None:
 
 
 def _collate_metadata_type(
-    metadata_dir: Path, metadata_type: str, dedup_columns: List[str]
+    metadata_dir: Path, metadata_type: str, dedup_columns: list[str]
 ) -> None:
     """
     Helper function to collate a specific type of metadata files.
@@ -499,7 +498,7 @@ def _collate_metadata_type(
             dfs.append(df)
         except Exception as e:
             logger.error(
-                f"Error reading {metadata_type} metadata file {file_path}: {str(e)}"
+                f"Error reading {metadata_type} metadata file {file_path}: {e!s}"
             )
 
     if not dfs:
@@ -598,7 +597,7 @@ def convert_command(
     output_dir: Path,
     source: str,
     verbose: bool,
-    mandatory_feature_cols_file: Optional[Path],
+    mandatory_feature_cols_file: Path | None,
     continue_on_error: bool,
     jcp2022_cols: str,
     mandatory_metadata: str = "Metadata_Plate,Metadata_Well",
