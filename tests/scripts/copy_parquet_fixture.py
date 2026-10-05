@@ -13,8 +13,9 @@ same directory structure as inputs/.
 """
 
 import os
-import pandas as pd
 import shutil
+
+import pandas as pd
 
 
 def is_deep_learning_profile(filepath):
