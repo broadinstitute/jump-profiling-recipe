@@ -11,9 +11,9 @@ import shutil
 import numpy as np
 import pandas as pd
 
+from ..pycytominer.operations import Spherize
 from .io import merge_parquet, split_parquet
 from .metadata import NEGCON_CODES
-from ..pycytominer.operations import Spherize
 
 
 def generate_log_uniform_samples(
