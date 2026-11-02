@@ -7,21 +7,22 @@ File Structure:
 - Metadata Annotation: Functions for enriching metadata information
 """
 
+import logging
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 from tqdm.contrib.concurrent import thread_map
-import logging
-from pathlib import Path
 
 from .metadata import (
-    build_path,
-    load_metadata,
     MICRO_CONFIG,
+    NEGCON_CODES,
+    POSCON_CODES,
+    build_path,
     get_feature_columns,
     get_metadata_columns,
-    POSCON_CODES,
-    NEGCON_CODES,
+    load_metadata,
 )
 from .utils import validate_columns
 
