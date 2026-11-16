@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
+import logging
 import sys
 import tempfile
 from pathlib import Path
-import logging
 
 import pandas as pd
 import pytest
 from click.testing import CliRunner
+
 from jump_profiling_recipe.cli.converter import (
     convert_command,
-    read_mandatory_feature_cols,
     extract_batch_from_path,
+    read_mandatory_feature_cols,
 )
 
 # Ensure the repository root is on PYTHONPATH
