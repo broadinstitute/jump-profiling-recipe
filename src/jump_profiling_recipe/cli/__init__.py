@@ -6,7 +6,6 @@ from .converter import convert_command
 @click.group()
 def cli():
     """JUMP Profiling Recipe CLI tools."""
-    pass
 
 
 # Register commands
