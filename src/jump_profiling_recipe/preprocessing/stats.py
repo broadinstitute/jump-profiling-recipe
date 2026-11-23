@@ -7,15 +7,16 @@ File Structure:
 - Metadata Operations: Functions for augmenting stats DataFrame with metadata columns
 """
 
+import logging
 from functools import partial
 from itertools import chain
-import logging
 
 import numpy as np
 import pandas as pd
 from scipy.stats import median_abs_deviation
+
 from .io import merge_parquet, validate_columns
-from .metadata import get_feature_columns, get_metadata_columns, NEGCON_CODES
+from .metadata import NEGCON_CODES, get_feature_columns, get_metadata_columns
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
